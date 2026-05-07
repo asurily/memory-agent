@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Agent Web UI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Memory Agent</h1>
+            <p class="subtitle">AI Assistant with Memory</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Left Panel: Session List -->
+            <div class="session-panel">
+                <div class="session-header">
+                    <input type="text" id="userId" placeholder="User ID" value="user-001">
+                    <button id="createSessionBtn" class="btn-primary">New</button>
+                </div>
+                <div class="session-list" id="sessionList">
+                    <div class="empty-state">No sessions yet.</div>
+                </div>
+            </div>
+
+            <!-- Middle Panel: Chat -->
+            <div class="chat-panel">
+                <div class="session-bar">
+                    <span id="sessionIdDisplay" class="session-id"></span>
+                </div>
+
+                <div id="chatMessages" class="chat-messages">
+                    <div class="welcome-message">
+                        <p>Welcome to Memory Agent!</p>
+                        <p>Create a session to start chatting.</p>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <textarea id="userInput" placeholder="Type your message..." rows="3"></textarea>
+                    <div class="button-row">
+                        <button id="sendBtn" class="btn-primary" disabled>Send</button>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <button id="summarizeBtn" class="btn-secondary" disabled>Summarize</button>
+                    <button id="closeSessionBtn" class="btn-danger" disabled>Close Session</button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Memory & Profile -->
+            <div class="info-panel">
+                <div class="panel-section">
+                    <h3>User Profile</h3>
+                    <div id="profileContent" class="profile-content">
+                        <p class="empty-state">No profile data yet.</p>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Memories</h3>
+                    <div id="memoriesContent" class="memories-content">
+                        <p class="empty-state">No memories yet.</p>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Intent Summary</h3>
+                    <div id="summaryContent" class="summary-content">
+                        <p class="empty-state">Click "Summarize" to generate.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

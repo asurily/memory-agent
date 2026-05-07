@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Agent 系统架构</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', monospace; background: #020617; min-height: 100vh; padding: 2rem; color: white; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container { background: rgba(15, 23, 42, 0.5); border-radius: 1rem; border: 1px solid #1e293b; padding: 1.5rem; overflow-x: auto; }
+    svg { width: 100%; min-width: 1200px; display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card { background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.blue { background: #60a5fa; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>Memory Agent 系统架构</h1>
+      </div>
+      <p class="subtitle">多轮对话记忆中间件 · v1.2 · 56 个 Java 文件 · ~4800 行</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1280 1100">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+          </marker>
+          <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee"/>
+          </marker>
+          <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399"/>
+          </marker>
+          <marker id="arrow-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa"/>
+          </marker>
+          <marker id="arrow-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24"/>
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <rect width="100%" height="100%" fill="url(#grid)"/>
+
+        <!-- ============ 标题区域 ============ -->
+        <text x="640" y="30" fill="#94a3b8" font-size="10" text-anchor="middle">系统架构分层图 · v1.2</text>
+
+        <!-- ============ 调用方 ============ -->
+        <rect x="420" y="50" width="440" height="50" rx="8" fill="rgba(8, 51, 68, 0.5)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="640" y="72" fill="white" font-size="13" font-weight="700" text-anchor="middle">调用方（AI Agent / 应用）</text>
+        <text x="640" y="88" fill="#94a3b8" font-size="9" text-anchor="middle">会话管理 · 记忆读写 · 意图总结 · 上下文压缩 · 安全扫描</text>
+
+        <!-- 箭头从调用方到 MemoryAgent -->
+        <line x1="640" y1="100" x2="640" y2="120" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+
+        <!-- ============ MemoryAgent 门面层 ============ -->
+        <rect x="320" y="122" width="640" height="55" rx="8" fill="rgba(15, 23, 42, 0.8)" stroke="#fbbf24" stroke-width="2"/>
+        <text x="640" y="147" fill="white" font-size="15" font-weight="700" text-anchor="middle">MemoryAgent（门面层）</text>
+        <text x="640" y="165" fill="#94a3b8" font-size="9" text-anchor="middle">Builder 模式创建 · 35+ 声明式 API · Session 冻结快照 · 统一入口</text>
+
+        <!-- ============ 核心子系统 (4个水平排列) ============ -->
+        <text x="40" y="212" fill="#22d3ee" font-size="11" font-weight="700">核心子系统</text>
+
+        <!-- ConversationManager -->
+        <rect x="40" y="225" width="270" height="80" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.2"/>
+        <text x="175" y="248" fill="white" font-size="11" font-weight="600" text-anchor="middle">ConversationManager</text>
+        <text x="175" y="265" fill="#94a3b8" font-size="9" text-anchor="middle">会话生命周期管理</text>
+        <text x="175" y="280" fill="#22d3ee" font-size="8" text-anchor="middle">create · get · list · close</text>
+        <text x="175" y="295" fill="#94a3b8" font-size="7" text-anchor="middle">消息添加 · 历史检索</text>
+
+        <!-- CuratedMemoryManager -->
+        <rect x="350" y="225" width="270" height="80" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.2"/>
+        <text x="485" y="248" fill="white" font-size="11" font-weight="600" text-anchor="middle">CuratedMemoryManager</text>
+        <text x="485" y="265" fill="#94a3b8" font-size="9" text-anchor="middle">记忆 CRUD 核心</text>
+        <text x="485" y="280" fill="#a78bfa" font-size="8" text-anchor="middle">addEntry · removeEntry · replaceEntry</text>
+        <text x="485" y="295" fill="#94a3b8" font-size="7" text-anchor="middle">安全扫描 → 去重 → 冲突检测 → 持久化 → 向量化</text>
+
+        <!-- IntentSummarizationEngine -->
+        <rect x="660" y="225" width="270" height="80" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.2"/>
+        <text x="795" y="248" fill="white" font-size="11" font-weight="600" text-anchor="middle">IntentSummarizationEngine</text>
+        <text x="795" y="265" fill="#94a3b8" font-size="9" text-anchor="middle">LLM 意图总结编排</text>
+        <text x="795" y="280" fill="#34d399" font-size="8" text-anchor="middle">summarize · summarizeAsync</text>
+        <text x="795" y="295" fill="#94a3b8" font-size="7" text-anchor="middle">加载消息 → 调用 LLM → 持久化 → 自动提取</text>
+
+        <!-- ContextCompressor -->
+        <rect x="970" y="225" width="270" height="80" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.2"/>
+        <text x="1105" y="248" fill="white" font-size="11" font-weight="600" text-anchor="middle">ContextCompressor</text>
+        <text x="1105" y="265" fill="#94a3b8" font-size="9" text-anchor="middle">三阶段上下文压缩</text>
+        <text x="1105" y="280" fill="#fbbf24" font-size="8" text-anchor="middle">工具输出裁剪 → 头尾保护 → LLM 摘要</text>
+        <text x="1105" y="295" fill="#94a3b8" font-size="7" text-anchor="middle">保护 Context Window 不溢出</text>
+
+        <!-- 箭头从 MemoryAgent 到各子系统 -->
+        <line x1="430" y1="177" x2="175" y2="223" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="530" y1="177" x2="485" y2="223" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="640" y1="177" x2="795" y2="223" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="750" y1="177" x2="1105" y2="223" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+
+        <!-- ============ 高级功能区 ============ -->
+        <text x="40" y="345" fill="#a78bfa" font-size="11" font-weight="700">高级功能（v1.1 / v1.2 · 全部默认关闭）</text>
+
+        <!-- Semantic Search -->
+        <rect x="40" y="358" width="230" height="85" rx="6" fill="rgba(76, 29, 149, 0.25)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="155" y="378" fill="white" font-size="10" font-weight="600" text-anchor="middle">语义搜索 (v1.1)</text>
+        <text x="155" y="395" fill="#94a3b8" font-size="8" text-anchor="middle">EmbeddingService</text>
+        <text x="155" y="408" fill="#94a3b8" font-size="8" text-anchor="middle">VectorStore</text>
+        <text x="155" y="425" fill="#a78bfa" font-size="7" text-anchor="middle">写入 upsert · 搜索 topK</text>
+        <text x="155" y="438" fill="#fbbf24" font-size="7" text-anchor="middle">semanticSearchEnabled=false</text>
+
+        <!-- Hybrid Search (D3) -->
+        <rect x="290" y="358" width="230" height="85" rx="6" fill="rgba(120, 53, 15, 0.25)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="405" y="378" fill="white" font-size="10" font-weight="600" text-anchor="middle">混合检索 (v1.2)</text>
+        <text x="405" y="395" fill="#94a3b8" font-size="8" text-anchor="middle">KeywordSearchService</text>
+        <text x="405" y="408" fill="#94a3b8" font-size="8" text-anchor="middle">HybridSearchStrategy</text>
+        <text x="405" y="425" fill="#fbbf24" font-size="8" text-anchor="middle">RRF 融合 · k=60</text>
+        <text x="405" y="438" fill="#fbbf24" font-size="7" text-anchor="middle">hybridSearchEnabled=false</text>
+
+        <!-- Decay Engine -->
+        <rect x="540" y="358" width="230" height="85" rx="6" fill="rgba(6, 78, 59, 0.25)" stroke="#34d399" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="655" y="378" fill="white" font-size="10" font-weight="600" text-anchor="middle">记忆衰退 (v1.1)</text>
+        <text x="655" y="395" fill="#94a3b8" font-size="8" text-anchor="middle">MemoryDecayEngine</text>
+        <text x="655" y="408" fill="#94a3b8" font-size="8" text-anchor="middle">CompositeDecayStrategy</text>
+        <text x="655" y="425" fill="#34d399" font-size="7" text-anchor="middle">定时轮询 · CORE → ARCHIVED</text>
+        <text x="655" y="438" fill="#fbbf24" font-size="7" text-anchor="middle">decayEnabled=false</text>
+
+        <!-- Conflict Detection -->
+        <rect x="790" y="358" width="230" height="85" rx="6" fill="rgba(136, 19, 55, 0.25)" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="905" y="378" fill="white" font-size="10" font-weight="600" text-anchor="middle">冲突检测 (v1.1/v1.2)</text>
+        <text x="905" y="395" fill="#94a3b8" font-size="8" text-anchor="middle">MemoryConflictDetector</text>
+        <text x="905" y="408" fill="#94a3b8" font-size="8" text-anchor="middle">SYNC / ASYNC 模式</text>
+        <text x="905" y="425" fill="#fb7185" font-size="8" text-anchor="middle">REPLACE · MERGE · DISCARD</text>
+        <text x="905" y="438" fill="#fbbf24" font-size="7" text-anchor="middle">conflictDetectionEnabled=false</text>
+
+        <!-- Tier Manager -->
+        <rect x="1040" y="358" width="200" height="85" rx="6" fill="rgba(8, 51, 68, 0.25)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="1140" y="378" fill="white" font-size="10" font-weight="600" text-anchor="middle">分层记忆 (v1.1)</text>
+        <text x="1140" y="395" fill="#94a3b8" font-size="8" text-anchor="middle">MemoryTierManager</text>
+        <text x="1140" y="408" fill="#94a3b8" font-size="8" text-anchor="middle">CORE / ARCHIVED / RAW</text>
+        <text x="1140" y="425" fill="#22d3ee" font-size="7" text-anchor="middle">archive · promote · search</text>
+        <text x="1140" y="438" fill="#fbbf24" font-size="7" text-anchor="middle">默认启用</text>
+
+        <!-- Auto Importance (D6) -->
+        <rect x="40" y="460" width="230" height="65" rx="6" fill="rgba(120, 53, 15, 0.2)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="155" y="480" fill="white" font-size="10" font-weight="600" text-anchor="middle">重要性自学习 (v1.2)</text>
+        <text x="155" y="497" fill="#94a3b8" font-size="8" text-anchor="middle">RelevanceTracker</text>
+        <text x="155" y="512" fill="#fbbf24" font-size="7" text-anchor="middle">每5次检索 +0.05 · 上限1.0</text>
+
+        <!-- Metrics (D7) -->
+        <rect x="290" y="460" width="230" height="65" rx="6" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="405" y="480" fill="white" font-size="10" font-weight="600" text-anchor="middle">性能监控 (v1.2)</text>
+        <text x="405" y="497" fill="#94a3b8" font-size="8" text-anchor="middle">MemoryMetricsCollector</text>
+        <text x="405" y="512" fill="#34d399" font-size="7" text-anchor="middle">LongAdder · 零外部依赖</text>
+
+        <!-- Auto Memory Extraction -->
+        <rect x="540" y="460" width="230" height="65" rx="6" fill="rgba(76, 29, 149, 0.2)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="655" y="480" fill="white" font-size="10" font-weight="600" text-anchor="middle">自动记忆提取 (v1.1)</text>
+        <text x="655" y="497" fill="#94a3b8" font-size="8" text-anchor="middle">MemoryExtractor</text>
+        <text x="655" y="512" fill="#a78bfa" font-size="7" text-anchor="middle">LLM 提取 · 置信度过滤</text>
+
+        <!-- Security Scanner -->
+        <rect x="790" y="460" width="230" height="65" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="905" y="480" fill="white" font-size="10" font-weight="600" text-anchor="middle">SecurityScanner (v1.0)</text>
+        <text x="905" y="497" fill="#94a3b8" font-size="8" text-anchor="middle">三层安全扫描</text>
+        <text x="905" y="512" fill="#fb7185" font-size="7" text-anchor="middle">Unicode · 提示注入 · 数据泄露</text>
+
+        <!-- ============ 数据流箭头 ============ -->
+        <line x1="175" y1="305" x2="155" y2="356" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-violet)"/>
+        <line x1="485" y1="305" x2="405" y2="356" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-amber)"/>
+        <line x1="485" y1="305" x2="655" y2="356" stroke="#34d399" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-green)"/>
+        <line x1="485" y1="305" x2="905" y2="356" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        <line x1="485" y1="305" x2="1140" y2="356" stroke="#22d3ee" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-cyan)"/>
+
+        <!-- ============ SPI 抽象层 ============ -->
+        <rect x="40" y="555" width="1200" height="95" rx="10" fill="rgba(15, 23, 42, 0.6)" stroke="#64748b" stroke-width="1.5" stroke-dasharray="8,4"/>
+        <text x="640" y="577" fill="#94a3b8" font-size="11" font-weight="700" text-anchor="middle">SPI 抽象层（可插拔接口）</text>
+
+        <!-- SPI boxes -->
+        <rect x="60" y="590" width="210" height="48" rx="4" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="165" y="612" fill="white" font-size="9" font-weight="600" text-anchor="middle">MemoryStorage</text>
+        <text x="165" y="627" fill="#94a3b8" font-size="7" text-anchor="middle">20 个方法 · CRUD · 会话 · 层级</text>
+
+        <rect x="290" y="590" width="210" height="48" rx="4" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="395" y="612" fill="white" font-size="9" font-weight="600" text-anchor="middle">IntentSummarizer</text>
+        <text x="395" y="627" fill="#94a3b8" font-size="7" text-anchor="middle">总结 · 压缩 · 提取 · 检测</text>
+
+        <rect x="520" y="590" width="210" height="48" rx="4" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="625" y="612" fill="white" font-size="9" font-weight="600" text-anchor="middle">EmbeddingService</text>
+        <text x="625" y="627" fill="#94a3b8" font-size="7" text-anchor="middle">文本向量化</text>
+
+        <rect x="750" y="590" width="210" height="48" rx="4" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="855" y="612" fill="white" font-size="9" font-weight="600" text-anchor="middle">VectorStore</text>
+        <text x="855" y="627" fill="#94a3b8" font-size="7" text-anchor="middle">向量存储 · 余弦搜索</text>
+
+        <rect x="980" y="590" width="240" height="48" rx="4" fill="rgba(120, 53, 15, 0.4)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="1100" y="612" fill="white" font-size="9" font-weight="600" text-anchor="middle">KeywordSearchService</text>
+        <text x="1100" y="627" fill="#94a3b8" font-size="7" text-anchor="middle">BM25 关键词搜索 (v1.2)</text>
+
+        <!-- ============ 默认实现层 ============ -->
+        <text x="40" y="690" fill="#34d399" font-size="11" font-weight="700">默认实现</text>
+
+        <rect x="40" y="700" width="290" height="48" rx="4" fill="rgba(8, 51, 68, 0.3)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="185" y="722" fill="white" font-size="9" font-weight="600" text-anchor="middle">InMemoryMemoryStorage</text>
+        <text x="185" y="737" fill="#94a3b8" font-size="7" text-anchor="middle">ConcurrentHashMap · 线程安全</text>
+
+        <rect x="350" y="700" width="290" height="48" rx="4" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
+        <text x="495" y="722" fill="white" font-size="9" font-weight="600" text-anchor="middle">OpenAIIntentSummarizer</text>
+        <text x="495" y="737" fill="#94a3b8" font-size="7" text-anchor="middle">HttpClient · 零外部JSON依赖</text>
+
+        <rect x="660" y="700" width="290" height="48" rx="4" fill="rgba(76, 29, 149, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="805" y="722" fill="white" font-size="9" font-weight="600" text-anchor="middle">SimpleEmbeddingService</text>
+        <text x="805" y="737" fill="#94a3b8" font-size="7" text-anchor="middle">SHA-256 哈希词袋 · 零依赖</text>
+
+        <rect x="970" y="700" width="290" height="48" rx="4" fill="rgba(76, 29, 149, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="1115" y="722" fill="white" font-size="9" font-weight="600" text-anchor="middle">InMemoryVectorStore</text>
+        <text x="1115" y="737" fill="#94a3b8" font-size="7" text-anchor="middle">ConcurrentHashMap · 余弦相似度</text>
+
+        <!-- Second row of defaults -->
+        <rect x="40" y="755" width="290" height="48" rx="4" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="185" y="777" fill="white" font-size="9" font-weight="600" text-anchor="middle">InMemoryKeywordSearchService (v1.2)</text>
+        <text x="185" y="792" fill="#94a3b8" font-size="7" text-anchor="middle">BM25 · k1=1.2 · b=0.75</text>
+
+        <rect x="350" y="755" width="290" height="48" rx="4" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="495" y="777" fill="white" font-size="9" font-weight="600" text-anchor="middle">InMemoryVectorStore</text>
+        <text x="495" y="792" fill="#94a3b8" font-size="7" text-anchor="middle">InMemory 向量搜索</text>
+
+        <!-- 箭头从 SPI 层到组件层 -->
+        <line x1="165" y1="555" x2="165" y2="540" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="395" y1="555" x2="795" y2="540" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+
+        <!-- ============ 存储后端实现 ============ -->
+        <text x="40" y="845" fill="#fbbf24" font-size="11" font-weight="700">存储后端（可插拔）</text>
+
+        <rect x="40" y="858" width="270" height="55" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.2"/>
+        <text x="175" y="878" fill="white" font-size="10" font-weight="600" text-anchor="middle">InMemoryMemoryStorage</text>
+        <text x="175" y="898" fill="#94a3b8" font-size="8" text-anchor="middle">开发/测试（默认）</text>
+        <line x1="310" y1="885" x2="340" y2="885" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+
+        <rect x="350" y="858" width="270" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.2"/>
+        <text x="485" y="878" fill="white" font-size="10" font-weight="600" text-anchor="middle">TkMapperMemoryStorage</text>
+        <text x="485" y="898" fill="#94a3b8" font-size="8" text-anchor="middle">MySQL + TkMapper（生产）</text>
+        <line x1="620" y1="885" x2="650" y2="885" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)"/>
+
+        <rect x="660" y="858" width="270" height="55" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.2"/>
+        <text x="795" y="878" fill="white" font-size="10" font-weight="600" text-anchor="middle">自定义 SPI 实现</text>
+        <text x="795" y="898" fill="#94a3b8" font-size="8" text-anchor="middle">Redis / MongoDB 等</text>
+
+        <!-- 箭头从 SPI 到后端 -->
+        <line x1="165" y1="638" x2="175" y2="856" stroke="#64748b" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrow)"/>
+
+        <!-- ============ 数据模型 ============ -->
+        <text x="40" y="950" fill="#fb7185" font-size="11" font-weight="700">数据模型（不可变值对象）</text>
+
+        <rect x="40" y="960" width="180" height="50" rx="4" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="130" y="980" fill="white" font-size="9" font-weight="600" text-anchor="middle">MemoryEntry</text>
+        <text x="130" y="996" fill="#94a3b8" font-size="7" text-anchor="middle">id · content · type · tier · score</text>
+
+        <rect x="235" y="960" width="180" height="50" rx="4" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="325" y="980" fill="white" font-size="9" font-weight="600" text-anchor="middle">Session</text>
+        <text x="325" y="996" fill="#94a3b8" font-size="7" text-anchor="middle">id · userId · status · title</text>
+
+        <rect x="430" y="960" width="180" height="50" rx="4" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="520" y="980" fill="white" font-size="9" font-weight="600" text-anchor="middle">ConversationMessage</text>
+        <text x="520" y="996" fill="#94a3b8" font-size="7" text-anchor="middle">role · content · metadata</text>
+
+        <rect x="625" y="960" width="180" height="50" rx="4" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="715" y="980" fill="white" font-size="9" font-weight="600" text-anchor="middle">IntentSummary</text>
+        <text x="715" y="996" fill="#94a3b8" font-size="7" text-anchor="middle">coreIntent · keyTopics · actions</text>
+
+        <rect x="820" y="960" width="180" height="50" rx="4" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="910" y="980" fill="white" font-size="9" font-weight="600" text-anchor="middle">UserProfile</text>
+        <text x="910" y="996" fill="#94a3b8" font-size="7" text-anchor="middle">profileEntries + memoryEntries</text>
+
+        <rect x="1015" y="960" width="220" height="50" rx="4" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="1125" y="980" fill="white" font-size="9" font-weight="600" text-anchor="middle">VectorSearchResult</text>
+        <text x="1125" y="996" fill="#94a3b8" font-size="7" text-anchor="middle">id · score · content · metadata</text>
+
+        <!-- ============ Legend ============ -->
+        <rect x="40" y="1030" width="1200" height="45" rx="6" fill="rgba(15, 23, 42, 0.8)" stroke="#1e293b" stroke-width="1"/>
+        <text x="60" y="1053" fill="white" font-size="9" font-weight="600">图例</text>
+        <rect x="120" y="1043" width="12" height="8" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="138" y="1051" fill="#94a3b8" font-size="7">核心子系统</text>
+        <rect x="220" y="1043" width="12" height="8" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="238" y="1051" fill="#94a3b8" font-size="7">高级功能</text>
+        <rect x="320" y="1043" width="12" height="8" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
+        <text x="338" y="1051" fill="#94a3b8" font-size="7">数据模型 / 安全</text>
+        <rect x="440" y="1043" width="12" height="8" rx="2" fill="rgba(15, 23, 42, 0.6)" stroke="#64748b" stroke-width="1" stroke-dasharray="4,2"/>
+        <text x="458" y="1051" fill="#94a3b8" font-size="7">SPI 抽象</text>
+        <rect x="540" y="1043" width="12" height="8" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="558" y="1051" fill="#94a3b8" font-size="7">默认实现</text>
+        <rect x="640" y="1043" width="12" height="8" rx="2" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="658" y="1051" fill="#94a3b8" font-size="7">v1.2 新增</text>
+        <text x="780" y="1053" fill="#94a3b8" font-size="7">虚线 = 可选（默认关闭）</text>
+        <text x="940" y="1053" fill="#94a3b8" font-size="7">实线 = 核心（始终启用）</text>
+
+      </svg>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>核心子系统</h3>
+        </div>
+        <ul>
+          <li>• ConversationManager — 会话生命周期</li>
+          <li>• CuratedMemoryManager — 记忆 CRUD + 冲突检测</li>
+          <li>• IntentSummarizationEngine — LLM 意图总结</li>
+          <li>• ContextCompressor — 三阶段上下文压缩</li>
+          <li>• SecurityScanner — 三层安全扫描</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot violet"></div>
+          <h3>搜索能力</h3>
+        </div>
+        <ul>
+          <li>• 语义搜索 — EmbeddingService + VectorStore</li>
+          <li>• 混合检索 — KeywordSearchService + RRF 融合 (v1.2)</li>
+          <li>• 归档搜索 — MemoryTierManager 检索 ARCHIVED 层</li>
+          <li>• Session 冻结快照 — Prefix Cache 优化</li>
+          <li>• 重要性加权 — RelevanceTracker 自动提升 (v1.2)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>设计与性能</h3>
+        </div>
+        <ul>
+          <li>• 56 个 Java 文件 · 全部不可变值对象</li>
+          <li>• SPI + ServiceLoader 可插拔架构</li>
+          <li>• 所有新功能默认关闭 = v1.0 兼容</li>
+          <li>• MemoryMetricsCollector 零依赖监控 (v1.2)</li>
+          <li>• ASYNC 冲突检测 · 写入不阻塞 (v1.2)</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer">
+      Memory Agent 系统架构图 · v1.2 · Generated 2026-04-30
+    </p>
+  </div>
+</body>
+</html>

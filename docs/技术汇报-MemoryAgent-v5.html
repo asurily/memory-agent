@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Agent - 技术汇报</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --purple: #7c3aed;
+            --purple-light: #8b5cf6;
+            --indigo: #4f46e5;
+            --success: #059669;
+            --success-light: #10b981;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --rose: #e11d48;
+            --cyan: #0891b2;
+            --teal: #0d9488;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ===== Hero ===== */
+        .hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 25%, #2563eb 60%, #7c3aed 100%);
+            color: white;
+            padding: 72px 24px 56px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle at 30% 40%, rgba(59,130,246,0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 60%, rgba(124,58,237,0.12) 0%, transparent 50%);
+            animation: heroPulse 8s ease-in-out infinite;
+        }
+        @keyframes heroPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            position: relative; z-index: 1;
+            margin-bottom: 16px;
+        }
+        .hero .subtitle {
+            font-size: 20px;
+            opacity: 0.92;
+            position: relative; z-index: 1;
+            margin-bottom: 28px;
+            font-weight: 300;
+        }
+        .hero .badges {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            position: relative; z-index: 1;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            backdrop-filter: blur(4px);
+        }
+
+        /* ===== Section ===== */
+        .section {
+            padding: 56px 0;
+        }
+        .section + .section {
+            border-top: 1px solid var(--gray-200);
+        }
+        .section-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .section-desc {
+            color: var(--gray-500);
+            font-size: 16px;
+            margin-bottom: 32px;
+        }
+
+        /* ===== Value Card ===== */
+        .value-card {
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            color: white;
+            border-radius: var(--radius);
+            padding: 36px 40px;
+            margin: -24px 0 40px;
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        .value-card .big-text {
+            font-size: 22px;
+            font-weight: 600;
+            line-height: 1.6;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== Stats Grid ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 24px 20px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border-top: 3px solid var(--primary);
+        }
+        .stat-card:nth-child(2) { border-top-color: var(--success); }
+        .stat-card:nth-child(3) { border-top-color: var(--purple); }
+        .stat-card:nth-child(4) { border-top-color: var(--warning); }
+        .stat-card:nth-child(5) { border-top-color: var(--cyan); }
+        .stat-card:nth-child(6) { border-top-color: var(--rose); }
+        .stat-card:nth-child(7) { border-top-color: var(--indigo); }
+        .stat-card:nth-child(8) { border-top-color: var(--teal); }
+        .stat-number {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--gray-900);
+            letter-spacing: -1px;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* ===== Pain Points ===== */
+        .pain-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        .pain-old, .pain-new {
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow);
+        }
+        .pain-old {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+        }
+        .pain-new {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        .pain-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pain-old .pain-title { color: var(--danger); }
+        .pain-new .pain-title { color: var(--success); }
+        .pain-item {
+            padding: 8px 0;
+            padding-left: 20px;
+            position: relative;
+            font-size: 14px;
+            color: var(--gray-700);
+        }
+        .pain-old .pain-item::before {
+            content: '\2717';
+            position: absolute; left: 0; color: var(--danger); font-weight: bold;
+        }
+        .pain-new .pain-item::before {
+            content: '\2713';
+            position: absolute; left: 0; color: var(--success); font-weight: bold;
+        }
+
+        /* ===== Feature Grid ===== */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .feature-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 22px 20px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .feature-icon {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .feature-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 6px;
+        }
+        .feature-desc {
+            font-size: 13px;
+            color: var(--gray-500);
+            line-height: 1.5;
+        }
+        .feature-tag {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        .tag-always { background: #dbeafe; color: var(--primary); }
+        .tag-llm { background: #ede9fe; color: var(--purple); }
+        .tag-new { background: #fce7f3; color: var(--rose); }
+
+        /* ===== Architecture ===== */
+        .arch-box {
+            background: var(--gray-900);
+            border-radius: var(--radius);
+            padding: 28px 32px;
+            color: #e2e8f0;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin-bottom: 32px;
+            box-shadow: var(--shadow-lg);
+        }
+        .arch-box .hl-blue { color: #60a5fa; }
+        .arch-box .hl-green { color: #34d399; }
+        .arch-box .hl-purple { color: #a78bfa; }
+        .arch-box .hl-yellow { color: #fbbf24; }
+        .arch-box .hl-cyan { color: #22d3ee; }
+        .arch-box .hl-rose { color: #fb7185; }
+
+        /* ===== Tier Diagram ===== */
+        .tier-stack {
+            max-width: 520px;
+            margin: 0 auto 32px;
+        }
+        .tier-level {
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 12px;
+            color: white;
+            position: relative;
+        }
+        .tier-l1 { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+        .tier-l2 { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+        .tier-l3 { background: linear-gradient(135deg, #64748b, #94a3b8); }
+        .tier-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .tier-desc { font-size: 13px; opacity: 0.9; }
+        .tier-arrow {
+            text-align: center;
+            color: var(--gray-400);
+            font-size: 20px;
+            margin: 4px 0;
+        }
+
+        /* ===== Code Block ===== */
+        .code-block {
+            background: #1e293b;
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #e2e8f0;
+            overflow-x: auto;
+            margin-bottom: 24px;
+        }
+        .code-block .comment { color: #64748b; }
+        .code-block .keyword { color: #c084fc; }
+        .code-block .string { color: #34d399; }
+        .code-block .type { color: #60a5fa; }
+        .code-block .method { color: #fbbf24; }
+        .code-block .annotation { color: #f472b6; }
+        .code-block .num { color: #fb923c; }
+
+        /* ===== Table ===== */
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .styled-table th {
+            background: var(--gray-800);
+            color: white;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .styled-table td {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-700);
+        }
+        .styled-table tr:last-child td { border-bottom: none; }
+        .styled-table tr:hover td { background: var(--gray-50); }
+        .styled-table code {
+            background: var(--gray-100);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--primary-dark);
+        }
+
+        /* ===== Two Column ===== */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        /* ===== Highlight Box ===== */
+        .highlight-box {
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            border-left: 4px solid;
+        }
+        .highlight-blue {
+            background: #eff6ff;
+            border-left-color: var(--primary);
+        }
+        .highlight-green {
+            background: #f0fdf4;
+            border-left-color: var(--success);
+        }
+        .highlight-purple {
+            background: #f5f3ff;
+            border-left-color: var(--purple);
+        }
+        .highlight-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .highlight-blue .highlight-title { color: var(--primary); }
+        .highlight-green .highlight-title { color: var(--success); }
+        .highlight-purple .highlight-title { color: var(--purple); }
+
+        /* ===== PromptStrategy New Section ===== */
+        .new-feature-banner {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #e11d48 100%);
+            color: white;
+            border-radius: var(--radius);
+            padding: 36px 40px;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+        .new-feature-banner::before {
+            content: 'NEW';
+            position: absolute;
+            top: 12px; right: 20px;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .new-feature-banner h3 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .new-feature-banner p {
+            font-size: 15px;
+            opacity: 0.92;
+            line-height: 1.7;
+        }
+
+        .prompt-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+        .prompt-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 18px 16px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border-bottom: 3px solid var(--purple);
+        }
+        .prompt-card .prompt-emoji { font-size: 24px; margin-bottom: 8px; }
+        .prompt-card .prompt-name { font-size: 13px; font-weight: 700; color: var(--gray-800); margin-bottom: 4px; }
+        .prompt-card .prompt-desc { font-size: 11px; color: var(--gray-400); }
+
+        /* ===== Scenario Cards ===== */
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .scenario-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 24px 20px;
+            box-shadow: var(--shadow);
+            border-top: 3px solid var(--primary);
+        }
+        .scenario-card:nth-child(2) { border-top-color: var(--success); }
+        .scenario-card:nth-child(3) { border-top-color: var(--purple); }
+        .scenario-card:nth-child(4) { border-top-color: var(--warning); }
+        .scenario-card:nth-child(5) { border-top-color: var(--rose); }
+        .scenario-card:nth-child(6) { border-top-color: var(--cyan); }
+        .scenario-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--gray-900);
+        }
+        .scenario-desc {
+            font-size: 13px;
+            color: var(--gray-500);
+            line-height: 1.6;
+        }
+
+        /* ===== Timeline ===== */
+        .timeline {
+            position: relative;
+            padding-left: 36px;
+            margin-bottom: 32px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 14px; top: 0; bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--primary), var(--purple), var(--rose));
+            border-radius: 2px;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 24px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -28px; top: 6px;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid var(--primary);
+        }
+        .timeline-item:nth-child(2)::before { border-color: var(--purple); }
+        .timeline-item:nth-child(3)::before { border-color: var(--success); }
+        .timeline-item:nth-child(4)::before { border-color: var(--rose); }
+        .timeline-version {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .timeline-item:nth-child(2) .timeline-version { color: var(--purple); }
+        .timeline-item:nth-child(3) .timeline-version { color: var(--success); }
+        .timeline-item:nth-child(4) .timeline-version { color: var(--rose); }
+        .timeline-content {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+
+        /* ===== Footer ===== */
+        .footer {
+            background: var(--gray-900);
+            color: var(--gray-400);
+            text-align: center;
+            padding: 32px;
+            font-size: 13px;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 32px; }
+            .hero .subtitle { font-size: 16px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .feature-grid { grid-template-columns: 1fr; }
+            .pain-grid { grid-template-columns: 1fr; }
+            .two-col { grid-template-columns: 1fr; }
+            .scenario-grid { grid-template-columns: 1fr; }
+            .prompt-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ==================== Hero ==================== -->
+<div class="hero">
+    <h1>Memory Agent</h1>
+    <div class="subtitle">AI Agent 的记忆子系统 -- 让 Agent 真正"记住"用户</div>
+    <div class="badges">
+        <span class="badge">Java 17</span>
+        <span class="badge">零框架依赖</span>
+        <span class="badge">SPI 可插拔</span>
+        <span class="badge">Spring Boot 3.x</span>
+        <span class="badge">98 个 Java 文件</span>
+        <span class="badge">~10,000 行代码</span>
+    </div>
+</div>
+
+<div class="container">
+
+<!-- ==================== 核心价值 ==================== -->
+<div class="value-card">
+    <div class="big-text">
+        一个 JAR 包，一行代码接入。<br>
+        提供 LLM apiKey 后，20 项记忆能力自动启用 -- 记忆提取、冲突检测、语义搜索、增量意图、自动管道，全部零配置。
+    </div>
+</div>
+
+<!-- ==================== 项目规模 ==================== -->
+<div class="section">
+    <div class="section-title">项目规模</div>
+    <div class="section-desc">4 个 Maven 模块，98 个 Java 文件，全部自研、零外部依赖（core 模块仅 SLF4J）</div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">4</div>
+            <div class="stat-label">Maven 模块</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">98</div>
+            <div class="stat-label">Java 文件</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">~10K</div>
+            <div class="stat-label">行代码</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">6</div>
+            <div class="stat-label">SPI 扩展点</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">20</div>
+            <div class="stat-label">功能能力</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">17</div>
+            <div class="stat-label">数据模型</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">5</div>
+            <div class="stat-label">Prompt 可定制</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">0</div>
+            <div class="stat-label">外部依赖 (core)</div>
+        </div>
+    </div>
+
+    <table class="styled-table">
+        <thead>
+            <tr><th>模块</th><th>文件数</th><th>行数</th><th>职责</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>memory-agent-core</code></td><td>70</td><td>~7,200</td><td>纯 Java SDK，零框架依赖，全部 20 项功能</td></tr>
+            <tr><td><code>memory-agent-spring-boot-starter</code></td><td>2</td><td>~250</td><td>Spring Boot 3.x 自动装配 + YAML 配置映射</td></tr>
+            <tr><td><code>memory-agent-jdbc-storage</code></td><td>17</td><td>~1,350</td><td>MySQL + TkMapper 持久化存储，4 张表</td></tr>
+            <tr><td><code>memory-agent-examples</code></td><td>9</td><td>~1,130</td><td>纯 Java + Spring Boot 使用示例</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ==================== 痛点与解法 ==================== -->
+<div class="section">
+    <div class="section-title">解决什么问题</div>
+    <div class="section-desc">AI Agent 的核心痛点：对话结束即遗忘，无法跨会话保持用户上下文</div>
+
+    <div class="pain-grid">
+        <div class="pain-old">
+            <div class="pain-title">&#10060; 没有 Memory Agent</div>
+            <div class="pain-item">LLM 每次对话都从零开始，无法记住用户偏好</div>
+            <div class="pain-item">用户重复说"我是Java开发"、"用MySQL"等基础信息</div>
+            <div class="pain-item">无法从历史对话自动提取值得记忆的信息</div>
+            <div class="pain-item">记忆冲突无法处理（用户改了偏好但旧记忆还在）</div>
+            <div class="pain-item">对话越来越长，Token 消耗线性增长，无自动压缩</div>
+            <div class="pain-item">Prompt 硬编码在代码中，无法按业务领域调优</div>
+            <div class="pain-item">每接入一个场景都要重新实现记忆管理逻辑</div>
+        </div>
+        <div class="pain-new">
+            <div class="pain-title">&#9989; 使用 Memory Agent</div>
+            <div class="pain-item">跨会话记住用户画像、偏好、历史决策</div>
+            <div class="pain-item">自动从对话提取记忆，无需手动录入</div>
+            <div class="pain-item">写入时自动检测冲突，合并/替换/丢弃</div>
+            <div class="pain-item">三阶段上下文压缩，自动管理 Token 窗口</div>
+            <div class="pain-item">每轮实时推导意图变化，"成本呢？"自动补全参数</div>
+            <div class="pain-item">PromptStrategy SPI 按领域自定义 prompt</div>
+            <div class="pain-item">一个 JAR 包 + 一行代码，全部记忆能力就绪</div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 完整能力矩阵 ==================== -->
+<div class="section">
+    <div class="section-title">完整能力矩阵</div>
+    <div class="section-desc">20 项能力，按启用条件分为"始终启用"和"有 LLM 时自动启用"</div>
+
+    <div class="feature-grid">
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F4AC;</div>
+            <div class="feature-name">多用户多会话</div>
+            <div class="feature-desc">按 userId 隔离，每用户多个独立会话，跨会话共享画像</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F9E0;</div>
+            <div class="feature-name">LLM 意图总结</div>
+            <div class="feature-desc">提取 coreIntent / keyTopics / actionItems / emotionalTone</div>
+            <span class="feature-tag tag-llm">有 LLM</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F4BE;</div>
+            <div class="feature-name">可插拔存储</div>
+            <div class="feature-desc">SPI + ServiceLoader，内置 InMemory，可对接 MySQL / Redis</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F512;</div>
+            <div class="feature-name">三层安全扫描</div>
+            <div class="feature-desc">不可见 Unicode + 提示注入 + 数据泄露/后门检测</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F4C4;</div>
+            <div class="feature-name">三阶段上下文压缩</div>
+            <div class="feature-desc">工具输出裁剪 &#x2192; 头尾保护 &#x2192; LLM 中间摘要</div>
+            <span class="feature-tag tag-llm">有 LLM</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F50D;</div>
+            <div class="feature-name">语义搜索</div>
+            <div class="feature-desc">写入自动向量化，搜索自动语义匹配，零依赖默认实现</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F500;</div>
+            <div class="feature-name">混合检索 RRF</div>
+            <div class="feature-desc">向量语义 + BM25 关键词，RRF 融合排序</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x23F1;</div>
+            <div class="feature-name">记忆衰退与淘汰</div>
+            <div class="feature-desc">时间衰减 + 访问频率综合评分，低分自动归档</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F4A1;</div>
+            <div class="feature-name">自动记忆提取</div>
+            <div class="feature-desc">LLM 总结后自动提取偏好/事实/指令/身份，安全扫描+去重</div>
+            <span class="feature-tag tag-llm">有 LLM</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x2694;</div>
+            <div class="feature-name">记忆冲突检测</div>
+            <div class="feature-desc">LLM 驱动，CONTRADICT/UPDATE/DUPLICATE/SUPPLEMENT 四种冲突类型</div>
+            <span class="feature-tag tag-llm">有 LLM</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F3D7;</div>
+            <div class="feature-name">分层记忆架构</div>
+            <div class="feature-desc">CORE（注入 Prompt）/ ARCHIVED（语义检索）/ RAW（按需）三层</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F4C8;</div>
+            <div class="feature-name">重要性自学习</div>
+            <div class="feature-desc">根据检索频率自动提升重要性评分，每 5 次检索 +0.05</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F3AF;</div>
+            <div class="feature-name">增量意图推导</div>
+            <div class="feature-desc">每轮实时推导意图变化，"成本呢？"自动从上下文补全参数</div>
+            <span class="feature-tag tag-llm">有 LLM</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x26A1;</div>
+            <div class="feature-name">自动管道</div>
+            <div class="feature-desc">processUserMessage 自动后台总结，recordAssistantMessage 自动压缩</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F4CA;</div>
+            <div class="feature-name">性能指标监控</div>
+            <div class="feature-desc">LongAdder 零 GC 压力，addMemory/search/summarize/decay 延迟与计数</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x2744;</div>
+            <div class="feature-name">冻结快照</div>
+            <div class="feature-desc">会话启动时捕获记忆快照并冻结，保护 LLM Prefix Cache</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F3A8;</div>
+            <div class="feature-name">Prompt 可定制</div>
+            <div class="feature-desc">PromptStrategy SPI 自定义 5 处 LLM prompt，适配任意业务领域</div>
+            <span class="feature-tag tag-new">新增</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">&#x1F527;</div>
+            <div class="feature-name">零配置启用</div>
+            <div class="feature-desc">移除全部 10 个 boolean 开关，LLM 功能自动检测，一个 apiKey 全部就绪</div>
+            <span class="feature-tag tag-always">始终启用</span>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 极简接入 ==================== -->
+<div class="section">
+    <div class="section-title">极简接入</div>
+    <div class="section-desc">一行代码创建 Agent，提供 apiKey 后 20 项能力自动启用</div>
+
+    <div class="two-col">
+        <div>
+            <div style="font-weight:700;margin-bottom:8px;color:var(--gray-700);">&#x1F4E6; 纯 Java SDK（3 行）</div>
+            <div class="code-block">
+<span class="type">MemoryAgent</span> agent = <span class="type">MemoryAgent</span>.<span class="method">builder</span>()
+    .<span class="method">config</span>(<span class="type">MemoryAgentConfig</span>.<span class="method">builder</span>()
+        .<span class="method">llmApiKey</span>(<span class="string">"sk-xxx"</span>).<span class="method">build</span>())
+    .<span class="method">build</span>();
+
+<span class="comment">// 一站式处理：记录+记忆+意图+自动总结</span>
+<span class="type">TurnContext</span> ctx = agent.<span class="method">processUserMessage</span>(
+    sessionId, <span class="string">"用户输入"</span>);
+
+<span class="comment">// 拿到全部上下文，喂给你的 LLM</span>
+<span class="type">String</span> prefix = ctx.<span class="method">getMemoryContextPrefix</span>();
+            </div>
+        </div>
+        <div>
+            <div style="font-weight:700;margin-bottom:8px;color:var(--gray-700);">&#x1F33F; Spring Boot（YAML 即可）</div>
+            <div class="code-block">
+<span class="comment"># application.yml</span>
+<span class="keyword">memory-agent</span>:
+  <span class="keyword">llm</span>:
+    <span class="keyword">api-key</span>: <span class="string">${OPENAI_API_KEY}</span>
+    <span class="keyword">model</span>: <span class="string">gpt-4o-mini</span>
+
+<span class="comment"># 直接注入使用，零代码配置</span>
+<span class="annotation">@Autowired</span>
+<span class="keyword">private</span> <span class="type">MemoryAgent</span> memoryAgent;
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== PromptStrategy 新特性 ==================== -->
+<div class="section">
+    <div class="section-title">v5 新特性：Prompt 策略可插拔</div>
+    <div class="section-desc">5 处 LLM prompt 全部通过 SPI 可定制，不同业务领域零改动接入</div>
+
+    <div class="new-feature-banner">
+        <h3>PromptStrategy SPI</h3>
+        <p>
+            系统中 5 处 LLM 交互的 prompt（意图总结、记忆提取、冲突检测、上下文压缩、增量意图）原本硬编码在代码中，<br>
+            不同业务场景（医疗、客服、编程）无法调优。现在通过 PromptStrategy SPI 完全解耦：<br><br>
+            &#x2022; 默认 <code>DefaultPromptStrategy</code> 提供中文 prompt，开箱即用<br>
+            &#x2022; 继承并选择性覆盖任意方法，只需写差异部分<br>
+            &#x2022; 支持可选 system message，充分利用 LLM 的 system prompt 能力<br>
+            &#x2022; keyParams 可通过 YAML 配置，无需写代码
+        </p>
+    </div>
+
+    <div class="prompt-grid">
+        <div class="prompt-card">
+            <div class="prompt-emoji">&#x1F4CB;</div>
+            <div class="prompt-name">意图总结</div>
+            <div class="prompt-desc">coreIntent / keyTopics / actionItems / emotionalTone</div>
+        </div>
+        <div class="prompt-card">
+            <div class="prompt-emoji">&#x1F4E6;</div>
+            <div class="prompt-name">上下文压缩</div>
+            <div class="prompt-desc">简洁总结，保留关键决策和事实</div>
+        </div>
+        <div class="prompt-card">
+            <div class="prompt-emoji">&#x1F9E0;</div>
+            <div class="prompt-name">记忆提取</div>
+            <div class="prompt-desc">偏好/事实/指令/身份/关系分类</div>
+        </div>
+        <div class="prompt-card">
+            <div class="prompt-emoji">&#x26A1;</div>
+            <div class="prompt-name">冲突检测</div>
+            <div class="prompt-desc">矛盾/更新/重复/补充四种冲突类型</div>
+        </div>
+        <div class="prompt-card">
+            <div class="prompt-emoji">&#x1F3AF;</div>
+            <div class="prompt-name">增量意图</div>
+            <div class="prompt-desc">实时推导意图变化+上下文补全</div>
+        </div>
+    </div>
+
+    <div class="highlight-box highlight-purple">
+        <div class="highlight-title">领域适配示例：医疗场景</div>
+        <div style="font-size:14px;color:var(--gray-600);">
+            医疗场景需要不同的记忆分类（symptom/diagnosis/medication/allergy）和意图参数（bodyPart/severity），<br>
+            只需继承 DefaultPromptStrategy 覆盖 2 个方法，其余 3 个方法自动继承默认行为。
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div>
+            <div style="font-weight:700;margin-bottom:8px;color:var(--gray-700);">&#x1F4DD; Java API 注入</div>
+            <div class="code-block">
+<span class="type">MemoryAgent</span> agent = <span class="type">MemoryAgent</span>.<span class="method">builder</span>()
+    .<span class="method">config</span>(config)
+    .<span class="method">promptStrategy</span>(<span class="keyword">new</span> <span class="type">MedicalPromptStrategy</span>())
+    .<span class="method">build</span>();
+            </div>
+        </div>
+        <div>
+            <div style="font-weight:700;margin-bottom:8px;color:var(--gray-700);">&#x1F33F; Spring Boot Bean</div>
+            <div class="code-block">
+<span class="annotation">@Bean</span>
+<span class="keyword">public</span> <span class="type">PromptStrategy</span> <span class="method">promptStrategy</span>() {
+    <span class="keyword">return new</span> <span class="type">MedicalPromptStrategy</span>();
+}
+
+<span class="comment">// 或仅配置 keyParams（零代码）</span>
+<span class="comment"># application.yml</span>
+<span class="keyword">memory-agent</span>:
+  <span class="keyword">key-params-schema</span>: |
+    <span class="string">"symptom": "症状"</span>
+    <span class="string">"diagnosis": "诊断"</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 系统架构 ==================== -->
+<div class="section">
+    <div class="section-title">系统架构</div>
+    <div class="section-desc">门面模式 + SPI 可插拔，全部能力通过 MemoryAgent 统一入口访问</div>
+
+    <div class="arch-box">
+<span class="hl-blue">MemoryAgent</span>（门面，879 行）
+├── <span class="hl-green">ConversationManager</span>      &#x2192; 会话生命周期
+├── <span class="hl-green">CuratedMemoryManager</span>     &#x2192; 记忆 CRUD + 冲突检测 + 向量化
+├── <span class="hl-green">IntentSummarizationEngine</span> &#x2192; 意图总结 + 自动记忆提取
+├── <span class="hl-green">ContextCompressor</span>        &#x2192; 三阶段上下文压缩
+├── <span class="hl-green">SecurityScanner</span>          &#x2192; 三层安全扫描
+├── <span class="hl-green">MemoryTierManager</span>        &#x2192; 分层迁移 (CORE &#x2194; ARCHIVED)
+├── <span class="hl-green">MemoryDecayEngine</span>        &#x2192; 定时衰退评估
+├── <span class="hl-green">IncrementalIntentEngine</span>  &#x2192; 增量意图推导
+├── <span class="hl-green">HybridSearchStrategy</span>     &#x2192; 混合检索 RRF 融合
+├── <span class="hl-green">RelevanceTracker</span>         &#x2192; 重要性自学习
+├── <span class="hl-green">MemoryMetricsCollector</span>   &#x2192; 性能指标监控
+└── 全部依赖 &#x2192; <span class="hl-yellow">SPI 接口</span>
+     ├── <span class="hl-purple">MemoryStorage</span>       &#x2192; InMemoryMemoryStorage / TkMapperMemoryStorage
+     ├── <span class="hl-purple">IntentSummarizer</span>    &#x2192; OpenAIIntentSummarizer / NoOpIntentSummarizer
+     ├── <span class="hl-rose">PromptStrategy</span>      &#x2192; DefaultPromptStrategy（中文）/ 自定义策略
+     ├── <span class="hl-purple">EmbeddingService</span>    &#x2192; SimpleEmbeddingService（零依赖）
+     ├── <span class="hl-purple">VectorStore</span>         &#x2192; InMemoryVectorStore
+     └── <span class="hl-purple">KeywordSearchService</span> &#x2192; InMemoryKeywordSearchService
+    </div>
+</div>
+
+<!-- ==================== 分层记忆 ==================== -->
+<div class="section">
+    <div class="section-title">分层记忆架构</div>
+    <div class="section-desc">记忆自动分为三层，平衡 Prompt 效果与存储容量</div>
+
+    <div class="two-col">
+        <div class="tier-stack">
+            <div class="tier-level tier-l1">
+                <div class="tier-name">L1: CORE 核心记忆</div>
+                <div class="tier-desc">始终注入 Prompt &bull; 用户画像 + Agent 笔记 &bull; captureSnapshot() 只取这一层</div>
+            </div>
+            <div class="tier-arrow">&#x2193; 衰退评分 &lt; 阈值 / archiveMemory()</div>
+            <div class="tier-level tier-l2">
+                <div class="tier-name">L2: ARCHIVED 归档记忆</div>
+                <div class="tier-desc">语义检索 &bull; 不占 Prompt 空间 &bull; 衰退降级 / 手动归档的记忆</div>
+            </div>
+            <div class="tier-arrow">&#x2193; 原始对话记录</div>
+            <div class="tier-level tier-l3">
+                <div class="tier-name">L3: RAW 原始记录</div>
+                <div class="tier-desc">按需检索 &bull; 完整对话消息 &bull; 可选</div>
+            </div>
+        </div>
+        <div>
+            <div class="highlight-box highlight-blue">
+                <div class="highlight-title">与其他功能的联动</div>
+                <div style="font-size:14px;color:var(--gray-600);">
+                    &#x2022; 记忆衰退 &#x2192; 低分记忆自动降级到 ARCHIVED<br>
+                    &#x2022; 容量检查 &#x2192; 只计算 CORE 层记忆<br>
+                    &#x2022; 快照捕获 &#x2192; 只包含 CORE 层记忆<br>
+                    &#x2022; 归档记忆 &#x2192; 可通过语义搜索找回<br>
+                    &#x2022; promoteMemory() &#x2192; 手动提升回 CORE 层
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 自动管道 ==================== -->
+<div class="section">
+    <div class="section-title">自动管道编排</div>
+    <div class="section-desc">processUserMessage 和 recordAssistantMessage 两个方法自动编排多步操作</div>
+
+    <div class="two-col">
+        <div>
+            <div class="highlight-box highlight-green">
+                <div class="highlight-title">processUserMessage -- 一站式处理</div>
+                <div style="font-size:14px;color:var(--gray-600);">
+                    1. 记录用户消息<br>
+                    2. 加载冻结记忆快照<br>
+                    3. 加载用户画像<br>
+                    4. 获取最近意图总结<br>
+                    5. 获取消息列表<br>
+                    6. 检查总结条件<br>
+                    7. 推导增量意图<br>
+                    8. 若条件满足 &#x2192; <strong>ASYNC 后台总结</strong><br>
+                    9. 组装 TurnContext 返回
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="highlight-box highlight-blue">
+                <div class="highlight-title">recordAssistantMessage -- 自动压缩</div>
+                <div style="font-size:14px;color:var(--gray-600);">
+                    1. 记录助手消息<br>
+                    2. 若压缩条件满足 &#x2192; <strong>ASYNC 后台压缩</strong><br><br>
+                    <strong>异步结果获取：</strong><br>
+                    ctx.getPendingSummarization()<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;.ifPresent(f -> f.thenAccept(s -> {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// 异步总结完成<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;}));
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SPI 体系 ==================== -->
+<div class="section">
+    <div class="section-title">SPI 可插拔体系</div>
+    <div class="section-desc">6 大 SPI 扩展点，全部提供零依赖默认实现，生产环境可按需替换</div>
+
+    <table class="styled-table">
+        <thead>
+            <tr><th>SPI 接口</th><th>职责</th><th>默认实现</th><th>生产替换</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>MemoryStorage</code></td>
+                <td>数据持久化（21 个方法）</td>
+                <td>InMemoryMemoryStorage</td>
+                <td>MySQL / Redis / MongoDB</td>
+            </tr>
+            <tr>
+                <td><code>IntentSummarizer</code></td>
+                <td>LLM 调用（总结/提取/冲突/对话）</td>
+                <td>OpenAIIntentSummarizer</td>
+                <td>Claude / 文心 / 通义千问</td>
+            </tr>
+            <tr>
+                <td><code>PromptStrategy</code></td>
+                <td>5 处 LLM Prompt 定制</td>
+                <td>DefaultPromptStrategy</td>
+                <td>医疗/客服/编程等场景策略</td>
+            </tr>
+            <tr>
+                <td><code>EmbeddingService</code></td>
+                <td>文本向量化</td>
+                <td>SimpleEmbeddingService（零依赖）</td>
+                <td>OpenAI / Spring AI</td>
+            </tr>
+            <tr>
+                <td><code>VectorStore</code></td>
+                <td>向量存储与检索</td>
+                <td>InMemoryVectorStore</td>
+                <td>Milvus / Pinecone / Weaviate</td>
+            </tr>
+            <tr>
+                <td><code>KeywordSearchService</code></td>
+                <td>BM25 关键词搜索</td>
+                <td>InMemoryKeywordSearchService</td>
+                <td>Elasticsearch</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ==================== 设计亮点 ==================== -->
+<div class="section">
+    <div class="section-title">设计亮点</div>
+    <div class="section-desc">关键设计决策及其技术价值</div>
+
+    <table class="styled-table">
+        <thead>
+            <tr><th>设计决策</th><th>实现方式</th><th>价值</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>零框架依赖</strong></td>
+                <td>core 仅依赖 SLF4J，手动 JSON 解析，java.net.http.HttpClient</td>
+                <td>可嵌入任意 Java 项目，无依赖冲突</td>
+            </tr>
+            <tr>
+                <td><strong>不可变值对象</strong></td>
+                <td>17 个 model 类全部 final + private constructor + getter only</td>
+                <td>天然线程安全，无并发问题</td>
+            </tr>
+            <tr>
+                <td><strong>冻结快照</strong></td>
+                <td>会话启动时捕获记忆快照，期间不变</td>
+                <td>保护 LLM Prefix Cache，减少 Token 消耗</td>
+            </tr>
+            <tr>
+                <td><strong>能力自动启用</strong></td>
+                <td>移除全部 10 个 boolean 开关，检测 apiKey 自动启用</td>
+                <td>极简接入，一个 apiKey 全部就绪</td>
+            </tr>
+            <tr>
+                <td><strong>守护线程池</strong></td>
+                <td>pipeline / decay / conflict 三个单线程守护线程</td>
+                <td>后台自动运行，不阻塞主流程</td>
+            </tr>
+            <tr>
+                <td><strong>Prompt 可插拔</strong></td>
+                <td>PromptStrategy SPI + 5 个 Context 类 + PromptTemplate 值对象</td>
+                <td>不同业务领域零改动接入，子类继承只写差异</td>
+            </tr>
+            <tr>
+                <td><strong>ConcurrentHashMap + compute()</strong></td>
+                <td>存储层原子操作，无锁并发</td>
+                <td>高并发场景下的线程安全保证</td>
+            </tr>
+            <tr>
+                <td><strong>LongAdder 指标</strong></td>
+                <td>MemoryMetricsCollector 使用 LongAdder</td>
+                <td>零 GC 压力的性能监控</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ==================== 版本演进 ==================== -->
+<div class="section">
+    <div class="section-title">版本演进</div>
+    <div class="section-desc">从 MVP 到生产级，渐进式能力叠加</div>
+
+    <div class="timeline">
+        <div class="timeline-item">
+            <div class="timeline-version">v1.0 -- 基础能力（8 项）</div>
+            <div class="timeline-content">
+                多轮对话管理、LLM 意图总结、记忆 CRUD、用户画像、三阶段压缩、三层安全扫描、可插拔存储、冻结快照
+            </div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-version">v1.1 -- 高级功能（+4 项）</div>
+            <div class="timeline-content">
+                自动记忆提取、语义搜索、分层记忆架构、记忆衰退与淘汰、记忆冲突检测
+            </div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-version">v1.2 -- 增强能力（+4 项）</div>
+            <div class="timeline-content">
+                异步冲突检测、混合检索 RRF、重要性自学习、性能指标监控、增量意图推导、自动管道编排
+            </div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-version">v2.0 / v5 -- 架构升级（+4 项）</div>
+            <div class="timeline-content">
+                零配置启用（移除 10 个开关）、PromptStrategy SPI（5 处 prompt 可定制）、keyParams YAML 配置、Prompt 全中文化
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 适用场景 ==================== -->
+<div class="section">
+    <div class="section-title">适用场景</div>
+    <div class="section-desc">任何需要 AI Agent 记住用户的场景，都可以用 Memory Agent 作为记忆中间件</div>
+
+    <div class="scenario-grid">
+        <div class="scenario-card">
+            <div class="scenario-title">&#x1F3E2; 企业 BI 助手</div>
+            <div class="scenario-desc">"上个月北京大区的收入怎样？" &#x2192; "成本呢？" &#x2192; 自动补全上下文参数，跨会话记住用户关注的指标</div>
+        </div>
+        <div class="scenario-card">
+            <div class="scenario-title">&#x1F3E5; 医疗问诊助手</div>
+            <div class="scenario-desc">自动提取症状/诊断/药物/过敏等记忆，冲突检测避免用药矛盾，自定义 PromptStrategy 适配医疗术语</div>
+        </div>
+        <div class="scenario-card">
+            <div class="scenario-title">&#x1F4BC; 企业知识库</div>
+            <div class="scenario-desc">语义搜索历史决策和技术选型，混合检索提高召回率，重要性自学习自动提升高价值知识</div>
+        </div>
+        <div class="scenario-card">
+            <div class="scenario-title">&#x1F527; 技术支持客服</div>
+            <div class="scenario-desc">记住用户的技术栈、环境信息、历史工单，跨会话累积技术画像，避免重复询问</div>
+        </div>
+        <div class="scenario-card">
+            <div class="scenario-title">&#x1F4BB; 编程助手</div>
+            <div class="scenario-desc">记住项目技术栈、代码风格偏好、架构决策，跨会话保持开发上下文一致性</div>
+        </div>
+        <div class="scenario-card">
+            <div class="scenario-title">&#x1F6D2; 电商导购</div>
+            <div class="scenario-desc">记住用户尺码、品牌偏好、预算范围，推荐结果随记忆积累越来越精准</div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 技术选型 ==================== -->
+<div class="section">
+    <div class="section-title">技术选型</div>
+    <div class="section-desc">精选最小依赖集，core 模块零框架依赖</div>
+
+    <table class="styled-table">
+        <thead>
+            <tr><th>项目</th><th>选择</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Java</td><td>17+</td><td>java.net.http.HttpClient、 sealed classes、records</td></tr>
+            <tr><td>JSON</td><td>手动解析</td><td>core 模块零外部依赖，extractJsonString / extractJsonArray</td></tr>
+            <tr><td>日志</td><td>SLF4J</td><td>仅门面，用户自选实现（Logback / Log4j2）</td></tr>
+            <tr><td>Spring Boot</td><td>3.4.1</td><td>Starter 模块 optional，自动装配 + YAML 配置</td></tr>
+            <tr><td>ORM</td><td>TkMapper 4.3.0</td><td>JDBC Storage 模块，javax.persistence 注解</td></tr>
+            <tr><td>数据库</td><td>MySQL 8.x</td><td>4 张表，schema.sql 自动建表</td></tr>
+            <tr><td>线程模型</td><td>守护线程池</td><td>3 个单线程 ExecutorService（pipeline / decay / conflict）</td></tr>
+            <tr><td>并发控制</td><td>ConcurrentHashMap</td><td>compute() 原子操作，不可变值对象天然线程安全</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ==================== 接入成本 ==================== -->
+<div class="section">
+    <div class="section-title">接入成本与扩展方式</div>
+    <div class="section-desc">从零到生产，渐进式接入路径</div>
+
+    <table class="styled-table">
+        <thead>
+            <tr><th>阶段</th><th>操作</th><th>获得能力</th><th>改动量</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>第 1 步：极速体验</strong></td>
+                <td>1 个 JAR + 1 行 apiKey</td>
+                <td>全部 20 项能力，InMemory 存储</td>
+                <td>3 行代码</td>
+            </tr>
+            <tr>
+                <td><strong>第 2 步：生产存储</strong></td>
+                <td>引入 jdbc-storage 模块 + 配置 MySQL</td>
+                <td>数据持久化，进程重启不丢失</td>
+                <td>1 个依赖 + 4 行 YAML</td>
+            </tr>
+            <tr>
+                <td><strong>第 3 步：领域适配</strong></td>
+                <td>继承 DefaultPromptStrategy + YAML 配置 keyParams</td>
+                <td>自定义记忆分类、意图参数、分析框架</td>
+                <td>1 个类 + N 行 YAML</td>
+            </tr>
+            <tr>
+                <td><strong>第 4 步：生产增强</strong></td>
+                <td>替换 EmbeddingService + VectorStore</td>
+                <td>真实语义搜索（OpenAI Embedding + Milvus）</td>
+                <td>2 个 Bean</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</div>
+
+<!-- ==================== Footer ==================== -->
+<div class="footer">
+    Memory Agent v5 &bull; 技术汇报 &bull; 2026.05
+</div>
+
+</body>
+</html>

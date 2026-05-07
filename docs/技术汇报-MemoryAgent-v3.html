@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Agent v2.0 — 技术汇报</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-light: #eff6ff;
+    --primary-dark: #1e3a5f;
+    --success: #059669;
+    --success-light: #ecfdf5;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --purple: #7c3aed;
+    --purple-light: #ede9fe;
+    --cyan: #0891b2;
+    --cyan-light: #ecfeff;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --radius: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: var(--gray-800);
+    line-height: 1.7;
+    background: var(--gray-50);
+  }
+
+  /* ===== 顶部封面 ===== */
+  .hero {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%);
+    color: white;
+    padding: 80px 40px 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -8%;
+    width: 500px;
+    height: 500px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 50%;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -5%;
+    width: 400px;
+    height: 400px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 50%;
+  }
+  .hero h1 { font-size: 48px; font-weight: 800; letter-spacing: 2px; position: relative; z-index: 1; }
+  .hero .subtitle { font-size: 22px; opacity: 0.9; margin-top: 16px; position: relative; z-index: 1; }
+  .hero .meta { margin-top: 24px; font-size: 14px; opacity: 0.65; position: relative; z-index: 1; }
+  .hero .badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(8px);
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    margin: 0 6px;
+  }
+
+  .container { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+
+  /* ===== 一句话价值卡片 ===== */
+  .value-prop {
+    background: white;
+    border-radius: var(--radius);
+    padding: 48px 40px;
+    margin-top: -30px;
+    position: relative;
+    box-shadow: var(--shadow-md);
+  }
+  .value-prop .lead {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary-dark);
+    text-align: center;
+    line-height: 1.8;
+  }
+  .value-prop .lead em {
+    font-style: normal;
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  /* ===== 章节 ===== */
+  .section { margin-top: 40px; }
+  .section-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 20px;
+    padding-left: 16px;
+    border-left: 4px solid var(--primary);
+  }
+  .section-title.purple { border-left-color: var(--purple); }
+  .section-title.success { border-left-color: var(--success); }
+  .section-title.warning { border-left-color: var(--warning); }
+  .section-title.cyan { border-left-color: var(--cyan); }
+
+  /* ===== 卡片 ===== */
+  .card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--gray-900);
+  }
+
+  /* ===== 对比容器 ===== */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 700px) { .compare { grid-template-columns: 1fr; } }
+  .compare .col { background: white; border-radius: var(--radius); padding: 24px 28px; box-shadow: var(--shadow-sm); }
+  .compare .col h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .compare .old h3 { color: var(--danger); }
+  .compare .new h3 { color: var(--success); }
+  .compare .old { border-top: 3px solid var(--danger); }
+  .compare .new { border-top: 3px solid var(--success); }
+
+  /* ===== 代码块 ===== */
+  pre {
+    background: var(--gray-900);
+    color: #e5e7eb;
+    padding: 20px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+  pre .comment { color: #6b7280; }
+  pre .key { color: #93c5fd; }
+  pre .str { color: #86efac; }
+  pre .del { color: #f87171; text-decoration: line-through; opacity: 0.6; }
+  pre .add { color: #4ade80; }
+
+  /* ===== 标签/徽章 ===== */
+  .tag {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .tag-always { background: var(--success-light); color: var(--success); }
+  .tag-llm { background: var(--purple-light); color: var(--purple); }
+  .tag-removed { background: var(--danger-light); color: var(--danger); }
+  .tag-tuning { background: var(--cyan-light); color: var(--cyan); }
+
+  /* ===== 表格 ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th {
+    background: var(--gray-100);
+    text-align: left;
+    padding: 10px 16px;
+    font-weight: 600;
+    color: var(--gray-700);
+    border-bottom: 2px solid var(--gray-200);
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  tr:hover td { background: var(--gray-50); }
+
+  /* ===== 统计条 ===== */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 20px 0;
+  }
+  @media (max-width: 700px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-card .num { font-size: 36px; font-weight: 800; }
+  .stat-card .label { font-size: 13px; color: var(--gray-600); margin-top: 4px; }
+  .stat-card.blue .num { color: var(--primary); }
+  .stat-card.green .num { color: var(--success); }
+  .stat-card.purple .num { color: var(--purple); }
+  .stat-card.orange .num { color: var(--warning); }
+
+  /* ===== 流程图 ===== */
+  .flow {
+    background: white;
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+  }
+  .flow pre {
+    background: var(--gray-50);
+    color: var(--gray-800);
+    font-size: 13px;
+    line-height: 1.6;
+    border: 1px solid var(--gray-200);
+  }
+
+  /* ===== 文件变更列表 ===== */
+  .file-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 700px) { .file-list { grid-template-columns: 1fr; } }
+  .file-item {
+    background: white;
+    border-radius: 8px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .file-item .icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .file-item .icon.edit { background: var(--primary-light); color: var(--primary); }
+  .file-item .info .name { font-weight: 600; font-size: 13px; color: var(--gray-900); word-break: break-all; }
+  .file-item .info .desc { font-size: 12px; color: var(--gray-600); margin-top: 2px; }
+
+  /* ===== 时间线 ===== */
+  .timeline { position: relative; padding-left: 36px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--gray-200);
+  }
+  .timeline .step {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .timeline .step::before {
+    content: '';
+    position: absolute;
+    left: -28px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px var(--primary);
+  }
+  .timeline .step h4 { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+  .timeline .step p { font-size: 13px; color: var(--gray-600); margin-top: 4px; }
+
+  /* ===== 页脚 ===== */
+  .footer {
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 13px;
+    color: var(--gray-600);
+    border-top: 1px solid var(--gray-200);
+    margin-top: 60px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 封面 ===== -->
+<div class="hero">
+  <h1>Memory Agent v2.0</h1>
+  <p class="subtitle">从"10 个开关"到"零配置" — 能力默认启用的架构重构</p>
+  <div class="meta">
+    <span class="badge">10 文件变更</span>
+    <span class="badge">+731 / -582 行</span>
+    <span class="badge">2026-05-02</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ===== 一句话价值 ===== -->
+<div class="value-prop">
+  <p class="lead">
+    应用方从需要理解 <em>10 个功能开关</em>，简化为 <em>只需提供 LLM apiKey</em>。<br>
+    所有能力根据基础设施自动启用，<em>零配置即获得完整功能</em>。
+  </p>
+</div>
+
+<!-- ===== 量化统计 ===== -->
+<div class="section">
+  <h2 class="section-title">变更概览</h2>
+  <div class="stats">
+    <div class="stat-card blue">
+      <div class="num">10</div>
+      <div class="label">boolean 开关移除</div>
+    </div>
+    <div class="stat-card green">
+      <div class="num">0</div>
+      <div class="label">剩余功能开关</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="num">8</div>
+      <div class="label">始终启用的能力</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="num">2</div>
+      <div class="label">LLM 自动检测能力</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 问题与动机 ===== -->
+<div class="section">
+  <h2 class="section-title warning">问题：开关爆炸</h2>
+  <div class="card">
+    <h3>应用方的认知负担</h3>
+    <p>v1.x 设计中，MemoryAgentConfig 包含 10 个 boolean 功能开关，全部默认关闭：</p>
+    <pre><span class="del">.securityScanEnabled(true)          // 安全扫描？死代码，从未检查</span>
+<span class="del">.autoMemoryExtractionEnabled(true)  // 需要手动开启</span>
+<span class="del">.semanticSearchEnabled(true)        // 需要手动开启</span>
+<span class="del">.decayEnabled(true)                 // 需要手动开启</span>
+<span class="del">.conflictDetectionEnabled(true)     // 需要手动开启</span>
+<span class="del">.hybridSearchEnabled(true)          // 需要手动开启</span>
+<span class="del">.autoImportanceLearningEnabled(true) // 需要手动开启</span>
+<span class="del">.metricsEnabled(true)               // 需要手动开启</span>
+<span class="del">.incrementalIntentEnabled(true)     // 需要手动开启</span>
+<span class="del">.autoPipelineMode(ASYNC)            // 需要手动设置</span></pre>
+    <p style="margin-top:12px; color: var(--gray-600);">
+      应用方根本不清楚哪些应该开启。这些都是本项目的能力，都应该具备，而不是交给应用方逐个控制。
+    </p>
+  </div>
+</div>
+
+<!-- ===== 重构方案 ===== -->
+<div class="section">
+  <h2 class="section-title success">解决方案：能力默认启用 + 自动检测</h2>
+
+  <div class="card">
+    <h3>三条分类原则</h3>
+    <table>
+      <thead>
+        <tr><th>分类</th><th>原则</th><th>能力</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-always">始终启用</span></td>
+          <td>纯内部功能，无外部依赖，零额外开销</td>
+          <td>安全扫描、语义搜索、混合检索、记忆衰退、重要性自学习、指标收集、增量意图、自动管道</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-llm">有 LLM 时</span></td>
+          <td>依赖 LLM API 调用，无 LLM 则跳过</td>
+          <td>自动记忆提取、冲突检测</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-tuning">调优参数</span></td>
+          <td>保留阈值/维度等数值参数供精细控制</td>
+          <td>confidenceThreshold, embeddingDimension, decayHalfLifeDays, conflictDetectionMode 等</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>自动检测逻辑</h3>
+    <pre><span class="comment">// MemoryAgent 构造函数中</span>
+<span class="key">boolean</span> hasLlm = builder.summarizer != <span class="key">null</span>
+    || (config.getLlmApiKey() != <span class="key">null</span> && !config.getLlmApiKey().isEmpty());
+
+<span class="comment">// hasLlm == true  → 自动创建 MemoryExtractor + MemoryConflictDetector</span>
+<span class="comment">// hasLlm == false → 这两个组件为 null，LLM 相关功能自动跳过</span></pre>
+  </div>
+</div>
+
+<!-- ===== 配置对比 ===== -->
+<div class="section">
+  <h2 class="section-title">配置对比</h2>
+  <div class="compare">
+    <div class="col old">
+      <h3>&#10060; v1.x — 应用方需要理解的配置</h3>
+      <pre><span class="key">MemoryAgentConfig</span>.builder()
+    .llmApiKey(<span class="str">"sk-xxx"</span>)
+    <span class="del">.autoMemoryExtractionEnabled(true)</span>
+    <span class="del">.semanticSearchEnabled(true)</span>
+    <span class="del">.decayEnabled(true)</span>
+    <span class="del">.conflictDetectionEnabled(true)</span>
+    <span class="del">.hybridSearchEnabled(true)</span>
+    <span class="del">.autoImportanceLearningEnabled(true)</span>
+    <span class="del">.metricsEnabled(true)</span>
+    <span class="del">.incrementalIntentEnabled(true)</span>
+    <span class="del">.autoPipelineMode(ASYNC)</span>
+    .build();</pre>
+    </div>
+    <div class="col new">
+      <h3>&#9989; v2.0 — 提供 apiKey，一切自动启用</h3>
+      <pre><span class="key">MemoryAgentConfig</span>.builder()
+    .llmApiKey(<span class="str">"sk-xxx"</span>)
+    .build();
+
+<span class="comment">// 完事。所有能力自动启用：</span>
+<span class="add">// - 自动记忆提取（有 LLM 时）</span>
+<span class="add">// - 冲突检测（有 LLM 时）</span>
+<span class="add">// - 语义搜索（始终，默认 SimpleEmbeddingService）</span>
+<span class="add">// - 混合检索（始终，向量 + 关键词 RRF）</span>
+<span class="add">// - 记忆衰退（始终，定时后台运行）</span>
+<span class="add">// - 重要性自学习（始终）</span>
+<span class="add">// - 指标收集（始终）</span>
+<span class="add">// - 自动管道（始终，ASYNC 后台总结+压缩）</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 删除的开关 ===== -->
+<div class="section">
+  <h2 class="section-title purple">删除的 10 个开关</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>删除的开关</th><th>原因</th><th>新行为</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>securityScanEnabled</code></td>
+          <td>死代码（定义了但从未被检查）</td>
+          <td><span class="tag tag-always">始终启用</span></td>
+        </tr>
+        <tr>
+          <td><code>incrementalIntentEnabled</code></td>
+          <td>纯内部功能，有 graceful fallback</td>
+          <td><span class="tag tag-always">始终启用</span></td>
+        </tr>
+        <tr>
+          <td><code>metricsEnabled</code></td>
+          <td>纯内存 LongAdder，零开销</td>
+          <td><span class="tag tag-always">始终启用</span></td>
+        </tr>
+        <tr>
+          <td><code>autoPipelineMode</code> <small>(OFF/ASYNC/SYNC)</small></td>
+          <td>内部编排，不应暴露给应用方</td>
+          <td><span class="tag tag-always">始终 ASYNC</span></td>
+        </tr>
+        <tr>
+          <td><code>semanticSearchEnabled</code></td>
+          <td>有零依赖默认实现 (SimpleEmbeddingService)</td>
+          <td><span class="tag tag-always">始终启用</span></td>
+        </tr>
+        <tr>
+          <td><code>hybridSearchEnabled</code></td>
+          <td>有零依赖默认实现 (InMemoryKeywordSearchService)</td>
+          <td><span class="tag tag-always">始终启用</span></td>
+        </tr>
+        <tr>
+          <td><code>autoImportanceLearningEnabled</code></td>
+          <td>纯内存 RelevanceTracker</td>
+          <td><span class="tag tag-always">始终启用</span></td>
+        </tr>
+        <tr>
+          <td><code>decayEnabled</code></td>
+          <td>纯数学 CompositeDecayStrategy</td>
+          <td><span class="tag tag-always">始终启用</span></td>
+        </tr>
+        <tr>
+          <td><code>autoMemoryExtractionEnabled</code></td>
+          <td>依赖 LLM，但可通过 hasLlm 自动检测</td>
+          <td><span class="tag tag-llm">有 LLM 时自动启用</span></td>
+        </tr>
+        <tr>
+          <td><code>conflictDetectionEnabled</code></td>
+          <td>依赖 LLM，但可通过 hasLlm 自动检测</td>
+          <td><span class="tag tag-llm">有 LLM 时自动启用</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 新增：自动管道 ===== -->
+<div class="section">
+  <h2 class="section-title cyan">新增：自动管道编排</h2>
+
+  <div class="card">
+    <h3>设计目标</h3>
+    <p>让 <code>processUserMessage()</code> + <code>recordAssistantMessage()</code> 成为真正的两步式自动管道，内部自动编排总结、记忆提取、压缩。应用方只需调两个方法，所有高级功能自动运转。</p>
+  </div>
+
+  <div class="flow">
+    <h3 style="margin-bottom:16px;">数据流（ASYNC 模式）</h3>
+    <pre><strong>用户发消息</strong>
+  &rarr; processUserMessage()
+      &rarr; 记录消息、加载快照/画像/总结、推导增量意图
+      &rarr; shouldSummarize() == true &rarr; <span style="color:#059669">向 pipelineExecutor 提交异步总结任务</span>
+      &rarr; 返回 TurnContext（含 <span style="color:#7c3aed">pendingSummarization Future</span>）
+  &rarr; 应用调用 LLM
+  &rarr; recordAssistantMessage()
+      &rarr; 记录助手消息
+      &rarr; shouldCompress() == true &rarr; <span style="color:#059669">向 pipelineExecutor 提交异步压缩任务</span>
+      &rarr; 返回
+  <span style="color:#6b7280">[后台] 总结完成 → 自动记忆提取（有 LLM 时）→ 结果存入 Storage</span>
+  <span style="color:#6b7280">[后台] 压缩完成（如需要）</span>
+  下一轮 processUserMessage() 从 Storage 读取最新总结</pre>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3>关键实现</h3>
+    <table>
+      <thead><tr><th>组件</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>pipelineExecutor</code></td><td>daemon 单线程执行器（名称 <code>auto-pipeline</code>），负责所有异步任务</td></tr>
+        <tr><td><code>summarizationInProgress</code></td><td>ConcurrentHashMap.newKeySet()，防止同一 session 重复触发总结</td></tr>
+        <tr><td><code>pendingSummarization</code></td><td>CompletableFuture&lt;IntentSummary&gt; 挂在 TurnContext 上，调用方可选等待</td></tr>
+        <tr><td><code>autoCompressionContextWindowTokens</code></td><td>压缩阈值，默认 8000 tokens，可通过 Builder 调优</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 文件变更 ===== -->
+<div class="section">
+  <h2 class="section-title">文件变更明细</h2>
+
+  <div class="file-list">
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">MemoryAgentConfig.java</div>
+        <div class="desc">core/config — 删除 10 个 boolean 字段 + Builder setter + AutoPipelineMode 枚举，仅保留调优参数</div>
+      </div>
+    </div>
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">MemoryAgent.java</div>
+        <div class="desc">core — 构造函数无条件创建所有组件，hasLlm 自动检测，新增 maybeAutoSummarize/maybeAutoCompress</div>
+      </div>
+    </div>
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">TurnContext.java</div>
+        <div class="desc">core/model — 新增 pendingSummarization 字段 + Optional getter</div>
+      </div>
+    </div>
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">MemoryMetricsCollector.java</div>
+        <div class="desc">core/memory — 新增 autoSummarizeCount/autoCompressCount 计数器</div>
+      </div>
+    </div>
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">MemoryAgentProperties.java</div>
+        <div class="desc">spring-boot-starter — 删除所有 boolean 属性，仅保留调优参数</div>
+      </div>
+    </div>
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">MemoryAgentAutoConfiguration.java</div>
+        <div class="desc">spring-boot-starter — 删除 boolean 映射，新增 SPI 自动注入</div>
+      </div>
+    </div>
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">PureJavaExample.java</div>
+        <div class="desc">examples — 移除所有 .xxxEnabled(true) 调用</div>
+      </div>
+    </div>
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">ChatService.java</div>
+        <div class="desc">examples — 展示自动管道的简化用法</div>
+      </div>
+    </div>
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">README.md</div>
+        <div class="desc">使用文档 — 全面更新，反映"能力默认启用"设计</div>
+      </div>
+    </div>
+    <div class="file-item">
+      <div class="icon edit">&#9998;</div>
+      <div class="info">
+        <div class="name">系统架构文档.md</div>
+        <div class="desc">docs/ — v1.2 → v2.0，更新设计哲学、创建流程、配置体系、线程模型</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 向后兼容 ===== -->
+<div class="section">
+  <h2 class="section-title success">向后兼容性</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>场景</th><th>影响</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>不设置任何新参数</td>
+          <td>所有功能自动启用。有 apiKey 则 LLM 功能也启用，无 apiKey 则纯本地功能运行</td>
+        </tr>
+        <tr>
+          <td>application.yml 保留旧 boolean 开关</td>
+          <td>静默忽略，不影响启动（MemoryAgentProperties 中已无对应字段）</td>
+        </tr>
+        <tr>
+          <td>手动调用 summarize()</td>
+          <td>仍然有效，in-progress 防护可缓解重复触发</td>
+        </tr>
+        <tr>
+          <td>手动调用 compress()</td>
+          <td>仍然有效</td>
+        </tr>
+        <tr>
+          <td>TurnContext 新字段 pendingSummarization</td>
+          <td>nullable，不影响现有使用</td>
+        </tr>
+        <tr>
+          <td>SPI 接口</td>
+          <td>无变更</td>
+        </tr>
+        <tr>
+          <td>Storage</td>
+          <td>无变更</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 架构演进 ===== -->
+<div class="section">
+  <h2 class="section-title purple">架构设计演进</h2>
+
+  <div class="timeline">
+    <div class="step">
+      <h4>v1.0 — 基础能力</h4>
+      <p>会话管理、意图总结、记忆 CRUD、安全扫描、上下文压缩。纯 SPI 架构，零框架依赖。</p>
+    </div>
+    <div class="step">
+      <h4>v1.1 — 高级功能（默认关闭）</h4>
+      <p>自动记忆提取、语义搜索、记忆衰退、冲突检测、分层记忆。全部 boolean 开关控制。</p>
+    </div>
+    <div class="step">
+      <h4>v1.2 — 增强能力（默认关闭）</h4>
+      <p>异步冲突检测、混合检索 RRF、重要性自学习、性能指标。继续增加 boolean 开关。</p>
+    </div>
+    <div class="step">
+      <h4>v2.0 — 能力默认启用 + 自动管道</h4>
+      <p><strong>本次重构。</strong>移除全部 10 个功能开关，能力根据基础设施自动启用。新增自动管道（ASYNC 后台总结+压缩），应用方只需 processUserMessage + recordAssistantMessage 两个方法。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 调优参数（保留） ===== -->
+<div class="section">
+  <h2 class="section-title cyan">保留的调优参数</h2>
+  <div class="card">
+    <p style="margin-bottom:12px; color: var(--gray-600);">功能不再需要开关，但以下阈值/维度参数保留供精细控制：</p>
+    <table>
+      <thead><tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>memoryExtractionConfidenceThreshold</code></td><td>double</td><td>0.7</td><td>记忆提取置信度阈值</td></tr>
+        <tr><td><code>embeddingDimension</code></td><td>int</td><td>1536</td><td>向量嵌入维度</td></tr>
+        <tr><td><code>vectorStoreType</code></td><td>String</td><td>in-memory</td><td>向量存储类型</td></tr>
+        <tr><td><code>decayHalfLifeDays</code></td><td>int</td><td>30</td><td>衰退半衰期（天）</td></tr>
+        <tr><td><code>decayThreshold</code></td><td>double</td><td>0.1</td><td>衰退淘汰阈值</td></tr>
+        <tr><td><code>decayScheduleIntervalMinutes</code></td><td>long</td><td>60</td><td>衰退评估间隔（分钟）</td></tr>
+        <tr><td><code>importanceProtectionThreshold</code></td><td>double</td><td>0.8</td><td>高重要性保护线</td></tr>
+        <tr><td><code>conflictDetectionMode</code></td><td>enum</td><td>SYNC</td><td>冲突检测模式（SYNC / ASYNC）</td></tr>
+        <tr><td><code>autoCompressionContextWindowTokens</code></td><td>int</td><td>8000</td><td>自动压缩的上下文窗口大小</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 关键设计决策 ===== -->
+<div class="section">
+  <h2 class="section-title">关键设计决策</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>决策</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>所有能力默认启用，而非默认关闭</td>
+          <td>降低应用方认知负担，SDK 的能力应该开箱即用</td>
+        </tr>
+        <tr>
+          <td>LLM 功能通过 hasLlm 自动检测</td>
+          <td>不提供 apiKey 则 NoOpIntentSummarizer，LLM 功能自然跳过；提供 apiKey 则自动启用</td>
+        </tr>
+        <tr>
+          <td>自动管道始终 ASYNC 模式</td>
+          <td>ASYNC 不阻塞调用方主路径，是绝大多数场景的最佳选择。去掉 SYNC 模式简化代码</td>
+        </tr>
+        <tr>
+          <td>保留 conflictDetectionMode (SYNC/ASYNC)</td>
+          <td>SYNC/ASYNC 是行为选择（是否阻塞写入），不是启用/关闭</td>
+        </tr>
+        <tr>
+          <td>旧 boolean 开关静默忽略</td>
+          <td>application.yml 中的旧配置不报错，平滑升级</td>
+        </tr>
+        <tr>
+          <td>SimpleEmbeddingService + InMemoryVectorStore 作为默认</td>
+          <td>零外部依赖，开发即用。生产环境通过 SPI 替换为真实实现</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 验证 ===== -->
+<div class="section">
+  <h2 class="section-title success">验证结果</h2>
+  <div class="card">
+    <h3>编译验证</h3>
+    <pre>Memory Agent ....................................... <span style="color:#059669">SUCCESS</span>
+Memory Agent Core .................................. <span style="color:#059669">SUCCESS</span>
+Memory Agent Spring Boot Starter ................... <span style="color:#059669">SUCCESS</span>
+Memory Agent JDBC Storage .......................... <span style="color:#059669">SUCCESS</span>
+Memory Agent Examples .............................. <span style="color:#059669">SUCCESS</span>
+
+BUILD SUCCESS</pre>
+    <p style="margin-top:12px; color: var(--gray-600);">全部 5 个模块编译通过，无任何错误。</p>
+  </div>
+</div>
+
+</div>
+
+<!-- ===== 页脚 ===== -->
+<div class="footer">
+  Memory Agent v2.0 &mdash; 能力默认启用的架构重构 &mdash; 2026-05-02
+</div>
+
+</body>
+</html>

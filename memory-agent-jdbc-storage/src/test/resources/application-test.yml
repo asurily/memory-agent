@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/memory_agent_test?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: memory_agent_test
+    password: test_password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+logging:
+  level:
+    com.ke.utopia.agent.memory: DEBUG
