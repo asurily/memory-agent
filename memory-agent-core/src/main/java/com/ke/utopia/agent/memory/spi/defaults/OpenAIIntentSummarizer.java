@@ -116,16 +116,15 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
         return model;
     }
 
-    private String callLlmApi(String prompt) {
-        return callLlmApi(PromptTemplate.of(prompt));
+    private String callLlmApi(PromptTemplate template) {
+        String requestBody = template.hasSystemMessage()
+                ? buildRequestBodyWithSystem(template.getSystemMessage(), template.getUserMessage())
+                : buildRequestBody(template.getUserMessage());
+        return callLlmApiWithBody(requestBody);
     }
 
-    private String callLlmApi(PromptTemplate template) {
+    private String callLlmApiWithBody(String requestBody) {
         try {
-            String requestBody = template.hasSystemMessage()
-                    ? buildRequestBodyWithSystem(template.getSystemMessage(), template.getUserMessage())
-                    : buildRequestBody(template.getUserMessage());
-
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/chat/completions"))
                     .header("Content-Type", "application/json")
@@ -150,27 +149,17 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
     }
 
     private String buildRequestBody(String prompt) {
-        // 手动构建 JSON（避免强制依赖 Jackson）
-        String escapedPrompt = prompt
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\t", "\\t");
-
         return "{\"model\":\"" + model + "\"," +
-                "\"messages\":[{\"role\":\"user\",\"content\":\"" + escapedPrompt + "\"}]," +
+                "\"messages\":[{\"role\":\"user\",\"content\":\"" + escapeJson(prompt) + "\"}]," +
                 "\"max_tokens\":" + maxTokens + "," +
                 "\"temperature\":" + temperature + "}";
     }
 
     private String buildRequestBodyWithSystem(String systemMessage, String userMessage) {
-        String escapedSystem = escapeJson(systemMessage);
-        String escapedUser = escapeJson(userMessage);
-
         return "{\"model\":\"" + model + "\"," +
                 "\"messages\":[" +
-                "{\"role\":\"system\",\"content\":\"" + escapedSystem + "\"}," +
-                "{\"role\":\"user\",\"content\":\"" + escapedUser + "\"}" +
+                "{\"role\":\"system\",\"content\":\"" + escapeJson(systemMessage) + "\"}," +
+                "{\"role\":\"user\",\"content\":\"" + escapeJson(userMessage) + "\"}" +
                 "]," +
                 "\"max_tokens\":" + maxTokens + "," +
                 "\"temperature\":" + temperature + "}";
@@ -221,17 +210,8 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
     private IntentSummary parseResponse(String llmResponse, String userId,
                                           String sessionId, int messageCount) {
         try {
-            // 提取 JSON 部分（可能被包裹在 markdown code block 中）
-            String json = llmResponse.trim();
-            if (json.contains("```")) {
-                int start = json.indexOf("{");
-                int end = json.lastIndexOf("}") + 1;
-                if (start >= 0 && end > start) {
-                    json = json.substring(start, end);
-                }
-            }
+            String json = stripMarkdownCodeBlock(llmResponse.trim(), "{", "}");
 
-            // 简单 JSON 字段提取
             String coreIntent = extractJsonString(json, "coreIntent");
             List<String> keyTopics = extractJsonArray(json, "keyTopics");
             List<String> actionItems = extractJsonArray(json, "actionItems");
@@ -326,21 +306,13 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
 
     private List<MemoryExtraction> parseExtractionResponse(String llmResponse) {
         try {
-            String json = llmResponse.trim();
-            if (json.contains("```")) {
-                int start = json.indexOf("[");
-                int end = json.lastIndexOf("]") + 1;
-                if (start >= 0 && end > start) {
-                    json = json.substring(start, end);
-                }
-            }
+            String json = stripMarkdownCodeBlock(llmResponse.trim(), "[", "]");
 
             if (!json.startsWith("[")) {
                 return Collections.emptyList();
             }
 
             List<MemoryExtraction> result = new ArrayList<>();
-            // Simple JSON array parsing for [{...},{...}]
             int i = 1; // skip '['
             while (i < json.length()) {
                 int objStart = json.indexOf("{", i);
@@ -351,15 +323,12 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
 
                 String obj = json.substring(objStart, objEnd + 1);
                 String content = extractJsonString(obj, "content");
-                String typeStr = extractJsonString(obj, "type");
-                String confidenceStr = extractJsonNumber(obj, "confidence");
-                String category = extractJsonString(obj, "category");
-                String importanceStr = extractJsonNumber(obj, "importanceScore");
-
                 if (content != null) {
+                    String typeStr = extractJsonString(obj, "type");
                     MemoryType type = "USER_PROFILE".equals(typeStr) ? MemoryType.USER_PROFILE : MemoryType.MEMORY;
-                    double confidence = confidenceStr != null ? Double.parseDouble(confidenceStr) : 0.5;
-                    double importanceScore = importanceStr != null ? Double.parseDouble(importanceStr) : 0.5;
+                    double confidence = parseDouble(extractJsonNumber(obj, "confidence"), 0.5);
+                    double importanceScore = parseDouble(extractJsonNumber(obj, "importanceScore"), 0.5);
+                    String category = extractJsonString(obj, "category");
                     result.add(new MemoryExtraction(content, type, confidence, category, importanceScore));
                 }
 
@@ -425,14 +394,7 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
 
     private ConflictResolution parseConflictResponse(String llmResponse) {
         try {
-            String json = llmResponse.trim();
-            if (json.contains("```")) {
-                int start = json.indexOf("{");
-                int end = json.lastIndexOf("}") + 1;
-                if (start >= 0 && end > start) {
-                    json = json.substring(start, end);
-                }
-            }
+            String json = stripMarkdownCodeBlock(llmResponse.trim(), "{", "}");
 
             String typeStr = extractJsonString(json, "conflictType");
             String actionStr = extractJsonString(json, "resolution");
@@ -441,9 +403,11 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
             String explanation = extractJsonString(json, "explanation");
             String replacedEntryId = extractJsonString(json, "replacedEntryId");
 
-            ConflictResolution.ConflictType type = parseConflictType(typeStr);
-            ConflictResolution.ResolutionAction action = parseResolutionAction(actionStr);
-            double confidence = confStr != null ? Double.parseDouble(confStr) : 0.5;
+            ConflictResolution.ConflictType type = parseEnum(typeStr,
+                    ConflictResolution.ConflictType.class, ConflictResolution.ConflictType.SUPPLEMENT);
+            ConflictResolution.ResolutionAction action = parseEnum(actionStr,
+                    ConflictResolution.ResolutionAction.class, ConflictResolution.ResolutionAction.KEEP_BOTH);
+            double confidence = parseDouble(confStr, 0.5);
 
             return new ConflictResolution(type, action, merged, confidence, explanation, replacedEntryId);
         } catch (Exception e) {
@@ -451,24 +415,6 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
             return new ConflictResolution(ConflictResolution.ConflictType.SUPPLEMENT,
                     ConflictResolution.ResolutionAction.KEEP_BOTH, null, 0.5,
                     "Failed to parse LLM conflict response");
-        }
-    }
-
-    private ConflictResolution.ConflictType parseConflictType(String str) {
-        if (str == null) return ConflictResolution.ConflictType.SUPPLEMENT;
-        try {
-            return ConflictResolution.ConflictType.valueOf(str);
-        } catch (IllegalArgumentException e) {
-            return ConflictResolution.ConflictType.SUPPLEMENT;
-        }
-    }
-
-    private ConflictResolution.ResolutionAction parseResolutionAction(String str) {
-        if (str == null) return ConflictResolution.ResolutionAction.KEEP_BOTH;
-        try {
-            return ConflictResolution.ResolutionAction.valueOf(str);
-        } catch (IllegalArgumentException e) {
-            return ConflictResolution.ResolutionAction.KEEP_BOTH;
         }
     }
 
@@ -530,34 +476,6 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
     }
 
     /**
-     * 使用自定义请求体调用 LLM API。
-     */
-    private String callLlmApiWithBody(String requestBody) {
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/chat/completions"))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                    .timeout(Duration.ofSeconds(60))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                throw new SummarizationException("LLM API returned status " + response.statusCode() +
-                        ": " + response.body());
-            }
-
-            return extractContentFromResponse(response.body());
-        } catch (SummarizationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new SummarizationException("Failed to call LLM API", e);
-        }
-    }
-
-    /**
      * 转义 JSON 字符串。
      */
     private String escapeJson(String text) {
@@ -611,22 +529,13 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
     private IncrementalIntentResult parseIncrementalIntentResponse(String llmResponse,
                                                                     ConversationMessage currentMessage) {
         try {
-            String json = llmResponse.trim();
-            if (json.contains("```")) {
-                int start = json.indexOf("{");
-                int end = json.lastIndexOf("}") + 1;
-                if (start >= 0 && end > start) {
-                    json = json.substring(start, end);
-                }
-            }
+            String json = stripMarkdownCodeBlock(llmResponse.trim(), "{", "}");
 
             String coreIntent = extractJsonString(json, "coreIntent");
             boolean hasChanged = extractJsonBoolean(json, "hasChanged");
             String reasoning = extractJsonString(json, "reasoning");
-            String confidenceStr = extractJsonNumber(json, "confidence");
-            double confidence = confidenceStr != null ? Double.parseDouble(confidenceStr) : 0.7;
+            double confidence = parseDouble(extractJsonNumber(json, "confidence"), 0.7);
 
-            // 提取 keyParams 对象
             Map<String, String> keyParams = extractJsonObject(json, "keyParams");
 
             return new IncrementalIntentResult(
@@ -701,5 +610,30 @@ public final class OpenAIIntentSummarizer implements IntentSummarizer {
             return true;
         }
         return false;
+    }
+
+    // ==================== Common Parsing Utilities ====================
+
+    private static String stripMarkdownCodeBlock(String text, String openChar, String closeChar) {
+        if (!text.contains("```")) return text;
+        int start = text.indexOf(openChar);
+        int end = text.lastIndexOf(closeChar) + 1;
+        if (start >= 0 && end > start) {
+            return text.substring(start, end);
+        }
+        return text;
+    }
+
+    private static <E extends Enum<E>> E parseEnum(String value, Class<E> enumClass, E defaultValue) {
+        if (value == null) return defaultValue;
+        try {
+            return Enum.valueOf(enumClass, value);
+        } catch (IllegalArgumentException e) {
+            return defaultValue;
+        }
+    }
+
+    private static double parseDouble(String value, double defaultValue) {
+        return value != null ? Double.parseDouble(value) : defaultValue;
     }
 }

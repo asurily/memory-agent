@@ -10,12 +10,13 @@ import com.ke.utopia.agent.memory.spi.PromptStrategy;
 import com.ke.utopia.agent.memory.spi.VectorStore;
 import com.ke.utopia.agent.memory.spi.defaults.OpenAIIntentSummarizer;
 import com.ke.utopia.agent.memory.spring.properties.MemoryAgentProperties;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+
+import java.util.function.Consumer;
 
 @AutoConfiguration
 @EnableConfigurationProperties(MemoryAgentProperties.class)
@@ -72,32 +73,28 @@ public class MemoryAgentAutoConfiguration {
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnMissingBean
     public MemoryAgent memoryAgent(MemoryAgentConfig config,
-                                    @Autowired(required = false) MemoryStorage storage,
-                                    @Autowired(required = false) IntentSummarizer summarizer,
-                                    @Autowired(required = false) EmbeddingService embeddingService,
-                                    @Autowired(required = false) VectorStore vectorStore,
-                                    @Autowired(required = false) KeywordSearchService keywordSearchService,
-                                    @Autowired(required = false) PromptStrategy promptStrategy) {
+                                    org.springframework.beans.factory.ObjectProvider<MemoryStorage> storageProvider,
+                                    org.springframework.beans.factory.ObjectProvider<IntentSummarizer> summarizerProvider,
+                                    org.springframework.beans.factory.ObjectProvider<EmbeddingService> embeddingProvider,
+                                    org.springframework.beans.factory.ObjectProvider<VectorStore> vectorStoreProvider,
+                                    org.springframework.beans.factory.ObjectProvider<KeywordSearchService> keywordProvider,
+                                    org.springframework.beans.factory.ObjectProvider<PromptStrategy> promptStrategyProvider) {
         MemoryAgent.Builder builder = MemoryAgent.builder().config(config);
-        if (storage != null) {
-            builder.storage(storage);
-        }
-        if (summarizer != null) {
-            builder.summarizer(summarizer);
-        }
-        if (embeddingService != null) {
-            builder.embeddingService(embeddingService);
-        }
-        if (vectorStore != null) {
-            builder.vectorStore(vectorStore);
-        }
-        if (keywordSearchService != null) {
-            builder.keywordSearchService(keywordSearchService);
-        }
-        if (promptStrategy != null) {
-            builder.promptStrategy(promptStrategy);
-        }
+        applyIfPresent(storageProvider, builder::storage);
+        applyIfPresent(summarizerProvider, builder::summarizer);
+        applyIfPresent(embeddingProvider, builder::embeddingService);
+        applyIfPresent(vectorStoreProvider, builder::vectorStore);
+        applyIfPresent(keywordProvider, builder::keywordSearchService);
+        applyIfPresent(promptStrategyProvider, builder::promptStrategy);
         return builder.build();
+    }
+
+    private static <T> void applyIfPresent(
+            org.springframework.beans.factory.ObjectProvider<T> provider, Consumer<T> setter) {
+        T bean = provider.getIfAvailable();
+        if (bean != null) {
+            setter.accept(bean);
+        }
     }
 
     private static MemoryAgentConfig.ConflictDetectionMode parseConflictMode(String mode) {

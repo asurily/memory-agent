@@ -384,9 +384,7 @@ public final class MemoryAgent {
         try {
             return summarizationEngine.summarize(sessionId);
         } finally {
-            if (metricsCollector != null) {
-                metricsCollector.recordSummarize(System.nanoTime() - startNs);
-            }
+            metricsCollector.recordSummarize(System.nanoTime() - startNs);
         }
     }
 
@@ -440,9 +438,7 @@ public final class MemoryAgent {
 
         if (memoryExtractor != null) {
             List<MemoryEntry> extracted = memoryExtractor.extractAndStore(userId, sessionId, messages, userProfile);
-            if (metricsCollector != null) {
-                metricsCollector.recordMemoryExtraction();
-            }
+            metricsCollector.recordMemoryExtraction();
             return extracted;
         }
         return Collections.emptyList();
@@ -456,60 +452,24 @@ public final class MemoryAgent {
     public List<VectorSearchResult> searchMemories(String userId, String query, int topK) {
         long startNs = System.nanoTime();
         try {
-            if (embeddingService == null || vectorStore == null) {
-                log.warn("Semantic search not enabled");
-                return Collections.emptyList();
-            }
-
-            // D3: Hybrid search (vector + keyword RRF fusion)
-            if (keywordSearchService != null) {
-                // Get vector results
-                float[] queryEmbedding = embeddingService.embed(query);
-                Map<String, String> filter = new HashMap<>();
-                filter.put("userId", userId);
-                List<VectorSearchResult> vectorResults = vectorStore.search(queryEmbedding, topK * 2, filter);
-
-                // Get keyword results
-                List<VectorSearchResult> keywordResults = keywordSearchService.search(query, topK * 2, userId);
-
-                // RRF fusion
-                List<VectorSearchResult> fused = HybridSearchStrategy.rrf(vectorResults, keywordResults, topK, 60);
-
-                // D6: Relevance tracking
-                if (relevanceTracker != null) {
-                    for (VectorSearchResult r : fused) {
-                        trackRelevance(userId, r);
-                    }
-                }
-
-                if (metricsCollector != null) {
-                    metricsCollector.recordSearch(System.nanoTime() - startNs, fused.size());
-                }
-                return fused;
-            }
-
-            // Pure semantic search
             float[] queryEmbedding = embeddingService.embed(query);
             Map<String, String> filter = new HashMap<>();
             filter.put("userId", userId);
 
-            List<VectorSearchResult> results = vectorStore.search(queryEmbedding, topK, filter);
+            // D3: Hybrid search (vector + keyword RRF fusion)
+            List<VectorSearchResult> vectorResults = vectorStore.search(queryEmbedding, topK * 2, filter);
+            List<VectorSearchResult> keywordResults = keywordSearchService.search(query, topK * 2, userId);
+            List<VectorSearchResult> fused = HybridSearchStrategy.rrf(vectorResults, keywordResults, topK, 60);
 
             // D6: Relevance tracking
-            if (relevanceTracker != null) {
-                for (VectorSearchResult r : results) {
-                    trackRelevance(userId, r);
-                }
+            for (VectorSearchResult r : fused) {
+                trackRelevance(userId, r);
             }
 
-            if (metricsCollector != null) {
-                metricsCollector.recordSearch(System.nanoTime() - startNs, results.size());
-            }
-            return results;
+            metricsCollector.recordSearch(System.nanoTime() - startNs, fused.size());
+            return fused;
         } catch (Exception e) {
-            if (metricsCollector != null) {
-                metricsCollector.recordError();
-            }
+            metricsCollector.recordError();
             log.error("Search failed for user {}: {}", userId, e.getMessage());
             return Collections.emptyList();
         }
@@ -519,12 +479,6 @@ public final class MemoryAgent {
      * 语义搜索对话消息。
      */
     public List<VectorSearchResult> searchMessages(String query, String sessionId, int topK) {
-        if (embeddingService == null || vectorStore == null) {
-            log.warn("Semantic search not enabled");
-            return Collections.emptyList();
-        }
-
-        // Fallback to keyword search for messages (messages are not vectorized by default)
         return Collections.emptyList();
     }
 
@@ -536,13 +490,9 @@ public final class MemoryAgent {
     public void runDecayCycle(String userId) {
         long startNs = System.nanoTime();
         try {
-            if (decayEngine != null) {
-                decayEngine.runDecayCycle(userId);
-            }
+            decayEngine.runDecayCycle(userId);
         } finally {
-            if (metricsCollector != null) {
-                metricsCollector.recordDecayRun(System.nanoTime() - startNs);
-            }
+            metricsCollector.recordDecayRun(System.nanoTime() - startNs);
         }
     }
 
@@ -559,38 +509,28 @@ public final class MemoryAgent {
      * 获取归档记忆。
      */
     public List<MemoryEntry> getArchivedMemories(String userId) {
-        if (tierManager != null) {
-            return tierManager.getArchivedMemories(userId, Integer.MAX_VALUE);
-        }
-        return storage.getMemoryEntriesByTier(userId, MemoryTier.ARCHIVED);
+        return tierManager.getArchivedMemories(userId, Integer.MAX_VALUE);
     }
 
     /**
      * 语义搜索归档记忆。
      */
     public List<VectorSearchResult> searchArchivedMemories(String userId, String query, int topK) {
-        if (tierManager != null) {
-            return tierManager.searchArchivedMemories(userId, query, topK);
-        }
-        return Collections.emptyList();
+        return tierManager.searchArchivedMemories(userId, query, topK);
     }
 
     /**
      * 归档记忆（降级到 ARCHIVED 层）。
      */
     public void archiveMemory(String userId, String entryId) {
-        if (tierManager != null) {
-            tierManager.archiveEntry(userId, entryId);
-        }
+        tierManager.archiveEntry(userId, entryId);
     }
 
     /**
      * 提升记忆到 CORE 层。
      */
     public void promoteMemory(String userId, String entryId) {
-        if (tierManager != null) {
-            tierManager.promoteToCore(userId, entryId);
-        }
+        tierManager.promoteToCore(userId, entryId);
     }
 
     // --- Feature 8: Metrics (D7) ---
@@ -599,57 +539,39 @@ public final class MemoryAgent {
      * 获取性能指标快照。
      */
     public MemoryMetricsCollector.MetricsSnapshot getMetrics() {
-        if (metricsCollector != null) {
-            return metricsCollector.snapshot();
-        }
-        return null;
+        return metricsCollector.snapshot();
     }
 
     // --- Lifecycle ---
 
     public void shutdown() {
-        if (decayEngine != null) {
-            decayEngine.stop();
-        }
-        if (pipelineExecutor != null) {
-            pipelineExecutor.shutdown();
-            try {
-                if (!pipelineExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                    pipelineExecutor.shutdownNow();
-                }
-            } catch (InterruptedException e) {
+        decayEngine.stop();
+        pipelineExecutor.shutdown();
+        try {
+            if (!pipelineExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
                 pipelineExecutor.shutdownNow();
-                Thread.currentThread().interrupt();
             }
+        } catch (InterruptedException e) {
+            pipelineExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
         if (conflictExecutor != null) {
             conflictExecutor.shutdown();
         }
-        if (vectorStore != null) {
-            vectorStore.shutdown();
-        }
-        if (keywordSearchService != null) {
-            keywordSearchService.shutdown();
-        }
+        vectorStore.shutdown();
+        keywordSearchService.shutdown();
         storage.shutdown();
         sessionSnapshots.clear();
 
-        // Clear incremental intent engine caches
-        if (incrementalIntentEngine != null) {
-            // Engine will be garbage collected, but we could add explicit cleanup if needed
-        }
-
-        if (metricsCollector != null) {
-            MemoryMetricsCollector.MetricsSnapshot snap = metricsCollector.snapshot();
-            log.info("MemoryAgent metrics: addMemory={} calls, search={} calls, " +
-                            "summarize={} calls, decayRuns={}, errors={}, " +
-                            "avgAddLatency={}ms, avgSearchLatency={}ms",
-                    snap.getAddMemoryCount(), snap.getSearchCount(),
-                    snap.getSummarizeCount(), snap.getDecayRunCount(),
-                    snap.getErrorCount(),
-                    String.format("%.2f", snap.getAddMemoryAvgLatencyMs()),
-                    String.format("%.2f", snap.getSearchAvgLatencyMs()));
-        }
+        MemoryMetricsCollector.MetricsSnapshot snap = metricsCollector.snapshot();
+        log.info("MemoryAgent metrics: addMemory={} calls, search={} calls, " +
+                        "summarize={} calls, decayRuns={}, errors={}, " +
+                        "avgAddLatency={}ms, avgSearchLatency={}ms",
+                snap.getAddMemoryCount(), snap.getSearchCount(),
+                snap.getSummarizeCount(), snap.getDecayRunCount(),
+                snap.getErrorCount(),
+                String.format("%.2f", snap.getAddMemoryAvgLatencyMs()),
+                String.format("%.2f", snap.getSearchAvgLatencyMs()));
 
         log.info("MemoryAgent shut down");
     }
@@ -658,19 +580,14 @@ public final class MemoryAgent {
      * 获取上一轮增量意图（用于调试或自定义处理）。
      */
     public java.util.Optional<IncrementalIntent> getPreviousIncrementalIntent(String sessionId) {
-        if (incrementalIntentEngine != null) {
-            return incrementalIntentEngine.getPreviousIntent(sessionId);
-        }
-        return java.util.Optional.empty();
+        return incrementalIntentEngine.getPreviousIntent(sessionId);
     }
 
     /**
      * 清除会话的增量意图缓存（会话结束时自动调用）。
      */
     public void clearIncrementalIntentCache(String sessionId) {
-        if (incrementalIntentEngine != null) {
-            incrementalIntentEngine.clearSession(sessionId);
-        }
+        incrementalIntentEngine.clearSession(sessionId);
     }
 
     // --- Auto Pipeline ---
@@ -697,16 +614,12 @@ public final class MemoryAgent {
             try {
                 log.info("Auto-summarization started for session {}", sessionId);
                 IntentSummary summary = summarize(sessionId);
-                if (metricsCollector != null) {
-                    metricsCollector.recordAutoSummarize();
-                }
+                metricsCollector.recordAutoSummarize();
                 future.complete(summary);
                 log.info("Auto-summarization completed for session {}", sessionId);
             } catch (Exception e) {
                 log.warn("Auto-summarization failed for session {}: {}", sessionId, e.getMessage());
-                if (metricsCollector != null) {
-                    metricsCollector.recordError();
-                }
+                metricsCollector.recordError();
                 future.completeExceptionally(e);
             }
         };
@@ -730,15 +643,11 @@ public final class MemoryAgent {
                 try {
                     log.info("Auto-compression started for session {}", sessionId);
                     compress(sessionId, config.getAutoCompressionContextWindowTokens());
-                    if (metricsCollector != null) {
-                        metricsCollector.recordAutoCompress();
-                    }
+                    metricsCollector.recordAutoCompress();
                     log.info("Auto-compression completed for session {}", sessionId);
                 } catch (Exception e) {
                     log.warn("Auto-compression failed for session {}: {}", sessionId, e.getMessage());
-                    if (metricsCollector != null) {
-                        metricsCollector.recordError();
-                    }
+                    metricsCollector.recordError();
                 }
             };
 
@@ -751,7 +660,6 @@ public final class MemoryAgent {
     // --- Internal ---
 
     private void trackRelevance(String userId, VectorSearchResult result) {
-        if (relevanceTracker == null) return;
         if (relevanceTracker.recordRetrieval(result.getId())) {
             Optional<MemoryEntry> entryOpt = storage.getMemoryEntry(userId, result.getId());
             entryOpt.ifPresent(entry -> {
